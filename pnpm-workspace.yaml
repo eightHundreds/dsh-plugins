@@ -1,0 +1,11 @@
+packages:
+  - 'packages/*'
+
+# Resolve SDK peers in development; Release manifests keep host peers external.
+autoInstallPeers: true
+strictPeerDependencies: true
+# Native subprocess helpers are development-only SDK prerequisites.
+allowBuilds:
+  "@deepseek-ai/dsh-subprocess-local": true
+  koffi: true
+  node-pty: true

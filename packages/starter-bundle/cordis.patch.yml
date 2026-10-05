@@ -1,0 +1,4 @@
+# Composition-only package: add rows here, do not add a fake apply() entry.
+- insert:
+    - id: example-hello
+      name: '@dsk/hello'

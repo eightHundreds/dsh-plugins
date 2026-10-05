@@ -1,0 +1,48 @@
+{
+  "name": "@dsk/hello",
+  "version": "0.0.0",
+  "description": "Minimal host plugin demonstrating Cordis lifecycle ownership.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.js"
+    },
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "locale"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "pnpm run build"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.4"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.4"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

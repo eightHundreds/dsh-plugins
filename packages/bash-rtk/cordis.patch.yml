@@ -1,0 +1,15 @@
+# RTK-aware sandbox shell provider bundle patch.
+# Automatically disables the official bash-sandbox and enables bash-rtk.
+# Sandbox providers, sandbox backend, and policy remain active.
+
+# 1. Automatically disable the official sandbox shell provider
+- id: bash-sandbox
+  disabled: true
+
+# 2. Insert and enable bash-rtk
+- insert:
+    - id: bash-rtk
+      name: '@dsk/bash-rtk'
+      disabled: false
+      config:
+        probeTimeoutMs: 2000

@@ -1,0 +1,29 @@
+{
+  "name": "@dsk/starter-bundle",
+  "version": "0.0.0",
+  "description": "Example DSH composition bundle over workspace plugins.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "exports": {
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "cordis.patch.yml",
+    "locale"
+  ],
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis"
+  ],
+  "dependencies": {
+    "@dsk/hello": "workspace:^"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

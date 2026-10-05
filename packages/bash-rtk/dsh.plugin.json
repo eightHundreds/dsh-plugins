@@ -1,0 +1,8 @@
+{
+  "id": "@dsk/bash-rtk",
+  "version": "0.2.0",
+  "main": "./lib/index.js",
+  "engines": {
+    "dsh": "0.2.0-rc.2"
+  }
+}
