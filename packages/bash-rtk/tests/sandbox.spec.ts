@@ -1,4 +1,5 @@
 import { resolve } from 'node:path'
+import { spawnSync } from 'node:child_process'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { SandboxProvider } from '@deepseek-ai/dsh-sandbox'
@@ -8,6 +9,8 @@ import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { SandboxBashExecutor } from '@deepseek-ai/dsh-bash-sandbox'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import RtkBashExecutor from '../src/index.ts'
+
+const rtkInstalled = spawnSync('rtk', ['--version'], { timeout: 1000 }).status === 0
 
 const contexts: Context[] = []
 afterEach(async () => {
@@ -48,7 +51,7 @@ async function setup(mode: SandboxMode = 'read-only', failure?: Error) {
 }
 
 describe('RTK inherits official sandbox execution (fake provider only)', () => {
-  it('hands the transformed command to confinement before spawning the stub', async () => {
+  it.skipIf(!rtkInstalled)('hands the transformed command to confinement before spawning the stub', async () => {
     const { ctx, calls } = await setup()
     expect(ctx.shell).toBeInstanceOf(SandboxBashExecutor)
     const execution = await ctx.shell.execute(ctx.shell.resolve({ command: 'git status' }))

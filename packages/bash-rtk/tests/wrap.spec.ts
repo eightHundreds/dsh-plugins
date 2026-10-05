@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { spawnSync } from 'node:child_process'
 import { wrapWithRtk } from '../src/wrap.ts'
+
+const rtkInstalled = spawnSync('rtk', ['--version'], { timeout: 1000 }).status === 0
 
 describe('wrapWithRtk', () => {
   describe('rtk unavailable', () => {
@@ -18,7 +21,7 @@ describe('wrapWithRtk', () => {
     })
   })
 
-  describe('supported commands are rewritten by RTK engine', () => {
+  describe.skipIf(!rtkInstalled)('supported commands are rewritten by RTK engine', () => {
     it('ls', () => {
       expect(wrapWithRtk('ls -al', true)).toBe('rtk ls -al')
     })
@@ -48,9 +51,10 @@ describe('wrapWithRtk', () => {
     it('whitespace-only command passes through', () => {
       expect(wrapWithRtk('   ', true)).toBe('   ')
     })
-    it('trims command appropriately when rewritten', () => {
+    it.skipIf(!rtkInstalled)('trims command appropriately when rewritten', () => {
       expect(wrapWithRtk('  git status', true)).toBe('rtk git status')
     })
   })
 })
+
 

@@ -1,4 +1,5 @@
 import { resolve } from 'node:path'
+import { spawnSync } from 'node:child_process'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { LocalBashExecutor } from '@deepseek-ai/dsh-bash-local'
@@ -10,6 +11,8 @@ import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import type { ShellExecRequest } from '@deepseek-ai/dsh-shell'
 import RtkBashExecutor from '../src/index.ts'
+
+const rtkInstalled = spawnSync('rtk', ['--version'], { timeout: 1000 }).status === 0
 
 const contexts: Context[] = []
 afterEach(async () => {
@@ -35,7 +38,7 @@ async function setup(config: Record<string, unknown> = {}) {
 }
 
 describe('RTK published executor contract', () => {
-  it('registers the sandbox subclass with official defaults', async () => {
+  it.skipIf(!rtkInstalled)('registers the sandbox subclass with official defaults', async () => {
     const { ctx } = await setup()
     expect(ctx.shell).toBeInstanceOf(RtkBashExecutor)
     expect(ctx.shell).toBeInstanceOf(SandboxBashExecutor)
@@ -49,16 +52,16 @@ describe('RTK published executor contract', () => {
 
   it('inherits configured defaults, timeout caps and request validation', async () => {
     const { ctx } = await setup({ cwd: '/workspace', timeoutMs: 1234, maxTimeoutMs: 2345, maxOutputBytes: 256 })
-    expect(ctx.shell.resolve({ command: 'git status' })).toMatchObject({
+    expect(ctx.shell.resolve({ command: 'echo test' })).toMatchObject({
       workdir: '/workspace', timeoutMs: 1234, stdoutMaxBytes: 256,
     })
-    expect(ctx.shell.resolve({ command: 'git status', timeoutMs: 10_000 }).timeoutMs).toBe(2345)
-    expect(ctx.shell.resolve({ command: 'git status', stdoutMaxBytes: 32 }).stdoutMaxBytes).toBe(32)
-    expect(() => ctx.shell.resolve({ command: 'git status', timeoutMs: 0 })).toThrow()
-    expect(() => ctx.shell.resolve({ command: 'git status', stdoutMaxBytes: 0 })).toThrow()
+    expect(ctx.shell.resolve({ command: 'echo test', timeoutMs: 10_000 }).timeoutMs).toBe(2345)
+    expect(ctx.shell.resolve({ command: 'echo test', stdoutMaxBytes: 32 }).stdoutMaxBytes).toBe(32)
+    expect(() => ctx.shell.resolve({ command: 'echo test', timeoutMs: 0 })).toThrow()
+    expect(() => ctx.shell.resolve({ command: 'echo test', stdoutMaxBytes: 0 })).toThrow()
   })
 
-  it('changes only the command, retaining frozen caller metadata and references', async () => {
+  it.skipIf(!rtkInstalled)('changes only the command, retaining frozen caller metadata and references', async () => {
     const { ctx } = await setup()
     const signal = new AbortController().signal
     const env = { CUSTOM: 'value' }
@@ -90,7 +93,7 @@ describe('RTK published executor contract', () => {
     expect(ctx.shell.resolve({ command: 'git status' }).command).toBe('git status')
   })
 
-  it('uses the calling context policy through Cordis service proxies', async () => {
+  it.skipIf(!rtkInstalled)('uses the calling context policy through Cordis service proxies', async () => {
     const { ctx } = await setup()
     const caller = ctx.isolate('sandboxPolicy')
     await caller.plugin(SandboxPolicyService, { mode: 'workspace-write', workspaceRoot: '/caller-root' })
@@ -108,7 +111,7 @@ describe('RTK published executor contract', () => {
     expect(ctx.shell.resolve({ command: 'git status' })).toMatchObject({ command: 'git status', timeoutMs: 42 })
   })
 
-  it('rejects duplicate shell activation without replacing the existing service', async () => {
+  it.skipIf(!rtkInstalled)('rejects duplicate shell activation without replacing the existing service', async () => {
     const { ctx } = await setup()
     await expect(ctx.registry.plugin(SandboxBashExecutor, {})).rejects.toThrow()
     expect(ctx.shell).toBeInstanceOf(RtkBashExecutor)
