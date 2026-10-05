@@ -76,11 +76,11 @@ describe.skipIf(process.platform !== 'darwin')('published SDK real macOS sandbox
   it.skipIf(spawnSync('rtk', ['--version'], { timeout: 2_000, killSignal: 'SIGKILL', stdio: 'ignore' }).status !== 0)(
     'executes a real RTK-transformed command with the default activation probe', async () => {
       const { ctx } = await setup()
-      const spec = ctx.shell.resolve({ command: 'git --version' })
-      expect(spec.command).toBe('rtk git --version')
+      const spec = ctx.shell.resolve({ command: 'ls -al' })
+      expect(spec.command).toBe('rtk ls -al')
       const result = await (await ctx.shell.execute(spec)).result()
       expect(result.exitCode).toBe(0)
-      expect(result.stdout.text).toMatch(/git version/u)
+      expect(result.stdout.text).toMatch(/\[rtk: rtk ls -al\]/u)
       expect(result.sandbox).toEqual({ mode: 'read-only', denied: false, enforcement: 'full' })
     },
   )

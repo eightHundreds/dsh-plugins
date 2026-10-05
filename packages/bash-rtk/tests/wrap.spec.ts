@@ -6,69 +6,38 @@ describe('wrapWithRtk', () => {
     it('passes every command through unchanged', () => {
       expect(wrapWithRtk('git status', false)).toBe('git status')
       expect(wrapWithRtk('cargo build --release', false)).toBe('cargo build --release')
+      expect(wrapWithRtk('ls -al', false)).toBe('ls -al')
     })
   })
 
-  describe('complex shell commands pass through unchanged', () => {
-    it('pipes', () => {
-      expect(wrapWithRtk('git status | grep modified', true)).toBe('git status | grep modified')
-    })
-    it('logical lists', () => {
-      expect(wrapWithRtk('npm install && npm run build', true)).toBe('npm install && npm run build')
-      expect(wrapWithRtk('cargo test || cargo check', true)).toBe('cargo test || cargo check')
-    })
-    it('newlines and shell groups', () => {
-      expect(wrapWithRtk('git status\necho next', true)).toBe('git status\necho next')
-      expect(wrapWithRtk('git status (x)', true)).toBe('git status (x)')
-    })
-    it('semicolon lists', () => {
-      expect(wrapWithRtk('cd src; git status', true)).toBe('cd src; git status')
-    })
-    it('redirections', () => {
-      expect(wrapWithRtk('git log > /tmp/log.txt', true)).toBe('git log > /tmp/log.txt')
-    })
-    it('command substitution and variables', () => {
-      expect(wrapWithRtk('echo $(git rev-parse HEAD)', true)).toBe('echo $(git rev-parse HEAD)')
-      expect(wrapWithRtk('git commit -m "$MSG"', true)).toBe('git commit -m "$MSG"')
-    })
-  })
-
-  describe('non-whitelisted commands pass through unchanged', () => {
-    it('unknown executable', () => {
-      expect(wrapWithRtk('ls -la', true)).toBe('ls -la')
-      expect(wrapWithRtk('python script.py', true)).toBe('python script.py')
-      expect(wrapWithRtk('constructor', true)).toBe('constructor')
-      expect(wrapWithRtk('__proto__', true)).toBe('__proto__')
-    })
-    it('sudo-prefixed commands are not wrapped', () => {
+  describe('unsupported or builtin commands pass through unchanged', () => {
+    it('echo and shell commands without rtk rewrite', () => {
+      expect(wrapWithRtk('echo hello', true)).toBe('echo hello')
       expect(wrapWithRtk('sudo git status', true)).toBe('sudo git status')
-    })
-    it('env-assigned commands are not wrapped', () => {
-      expect(wrapWithRtk('FOO=bar git status', true)).toBe('FOO=bar git status')
+      expect(wrapWithRtk('GIT status', true)).toBe('GIT status')
     })
   })
 
-  describe('whitelisted simple commands are wrapped', () => {
+  describe('supported commands are rewritten by RTK engine', () => {
+    it('ls', () => {
+      expect(wrapWithRtk('ls -al', true)).toBe('rtk ls -al')
+    })
+
     it('git', () => {
       expect(wrapWithRtk('git status', true)).toBe('rtk git status')
     })
+
     it('cargo', () => {
       expect(wrapWithRtk('cargo build --release', true)).toBe('rtk cargo build --release')
     })
-    it('npm', () => {
-      expect(wrapWithRtk('npm install', true)).toBe('rtk npm install')
-    })
-    it('golangci-lint maps to its rtk subcommand', () => {
-      expect(wrapWithRtk('golangci-lint run', true)).toBe('rtk golangci-lint run')
-    })
+
     it('preserves arguments verbatim', () => {
       expect(wrapWithRtk('git log --oneline -10', true)).toBe('rtk git log --oneline -10')
     })
-    it('preserves case-sensitive executable names', () => {
-      expect(wrapWithRtk('GIT status', true)).toBe('GIT status')
-    })
-    it('wraps a bare command with no arguments', () => {
-      expect(wrapWithRtk('git', true)).toBe('rtk git')
+
+    it('rewrites compound or piped commands', () => {
+      expect(wrapWithRtk('git status | grep modified', true)).toBe('git status | rtk grep modified')
+      expect(wrapWithRtk('cd src; git status', true)).toBe('cd src; rtk git status')
     })
   })
 
@@ -79,8 +48,9 @@ describe('wrapWithRtk', () => {
     it('whitespace-only command passes through', () => {
       expect(wrapWithRtk('   ', true)).toBe('   ')
     })
-    it('preserves leading whitespace', () => {
+    it('trims command appropriately when rewritten', () => {
       expect(wrapWithRtk('  git status', true)).toBe('rtk git status')
     })
   })
 })
+

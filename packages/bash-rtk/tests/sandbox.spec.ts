@@ -51,10 +51,10 @@ describe('RTK inherits official sandbox execution (fake provider only)', () => {
   it('hands the transformed command to confinement before spawning the stub', async () => {
     const { ctx, calls } = await setup()
     expect(ctx.shell).toBeInstanceOf(SandboxBashExecutor)
-    const execution = await ctx.shell.execute(ctx.shell.resolve({ command: 'git --version' }))
-    expect((await execution.result()).stdout.text).toBe('fixture-rtk')
+    const execution = await ctx.shell.execute(ctx.shell.resolve({ command: 'git status' }))
+    expect((await execution.result()).stdout.text).toBe('[rtk: rtk git status]\nfixture-rtk')
     expect(calls).toHaveLength(1)
-    expect(calls[0]?.argv).toEqual(['bash', '-c', 'rtk git --version'])
+    expect(calls[0]?.argv).toEqual(['bash', '-c', 'rtk git status'])
     expect(calls[0]?.policy).toEqual({ mode: 'read-only', workspaceRoot: resolve(process.cwd()) })
     expect(calls[0]?.signal).toBeInstanceOf(AbortSignal)
   })

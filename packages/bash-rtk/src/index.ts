@@ -9,7 +9,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { SandboxBashExecutor } from '@deepseek-ai/dsh-bash-sandbox'
 import type { Config as LocalConfig } from '@deepseek-ai/dsh-bash-sandbox'
-import type { ShellExecRequest, ShellExecSpec } from '@deepseek-ai/dsh-shell'
+import type { ShellExecRequest, ShellExecSpec, ShellExecution, ShellRunResult } from '@deepseek-ai/dsh-shell'
 import { wrapWithRtk } from './wrap.ts'
 
 export { wrapWithRtk } from './wrap.ts'
@@ -76,6 +76,34 @@ export class RtkBashExecutor extends SandboxBashExecutor {
   override resolve(request: ShellExecRequest): ShellExecSpec {
     const spec = super.resolve(request)
     return { ...spec, command: wrapWithRtk(spec.command, this.available) }
+  }
+
+  override async execute(spec: ShellExecSpec): Promise<ShellExecution> {
+    const execution = await super.execute(spec)
+    // Check if rtk is invoked anywhere in the command (as leading command, or in a pipeline / compound chain)
+    if (!/(?:^|[;&|]\s*)rtk\s+/.test(spec.command)) {
+      return execution
+    }
+
+    const banner = `[rtk: ${spec.command}]\n`
+    const originalResult = execution.result.bind(execution)
+    let decorated: Promise<ShellRunResult> | undefined
+
+    execution.result = () => {
+      decorated ??= originalResult().then((res) => {
+        const text = res.stdout.text
+        return {
+          ...res,
+          stdout: {
+            ...res.stdout,
+            text: text.length > 0 ? `${banner}${text}` : banner.trimEnd(),
+          },
+        }
+      })
+      return decorated
+    }
+
+    return execution
   }
 }
 

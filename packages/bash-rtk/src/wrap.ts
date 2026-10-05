@@ -1,113 +1,57 @@
 /**
- * Command wrapping for the rtk (Rust Token Killer) bash transform. Pure,
- * side-effect-free decision logic: whether a shell command may be routed
- * through `rtk` and, when it may, the exact `rtk` argv to replace the raw
- * `bash -c` source with.
+ * Command wrapping using RTK (Rust Token Killer)'s native rewrite engine.
  *
- * The policy is conservative on purpose — wrapping is a best-effort token
- * optimization. RTK can change command behavior and output; this is not an
- * equivalence guarantee. Three independent guards, in order:
+ * Rather than maintaining a fragile, static whitelist and regular expression
+ * checks, this module delegates rewrite decisions directly to RTK's official
+ * `rtk hook check <cmd>` command (RTK's single source of truth for AI agents).
  *
- * 1. **Complexity**: any shell metacharacter that would survive rtk's
- *    single-command boundary (pipelines, lists, redirections, command
- *    substitution, shell variables) disqualifies the command. Wrapping those
- *    would silently change what runs, so they pass through unchanged.
- * 2. **Whitelist**: only a fixed prefix map of development tools that rtk
- *    actually implements is eligible. The map keys are the *executable* name
- *    the shell invokes; the value is the rtk subcommand name (they differ for
- *    a few tools).
- * 3. **Availability**: when the `rtk` binary is absent the whole transform is
- *    the identity, so commands still use the inherited official sandbox
- *    executor when RTK is unavailable.
+ * RTK intelligently rewrites commands (including subcommands, pipes, arguments,
+ * e.g. `ls -al` -> `rtk ls -al`, `cat foo` -> `rtk read foo`), while safely
+ * preserving non-rewriteable commands (shell builtins, echo, etc.) by returning
+ * non-zero exit code.
  *
  * @module @dsk/bash-rtk/wrap
  */
 
-/** Shell metacharacters that change how the first command's output would be consumed. */
-const SHELL_METACHARACTER = /[|&;<>`$()\r\n]/
+import { spawnSync } from 'node:child_process'
 
-/** Executable name → rtk subcommand. Keys are lowercase and match the shell's first token. */
-const RTK_COMMAND_MAP: Readonly<Record<string, string>> = {
-  git: 'git',
-  gh: 'gh',
-  glab: 'glab',
-  gt: 'gt',
-  cargo: 'cargo',
-  go: 'go',
-  'golangci-lint': 'golangci-lint',
-  npm: 'npm',
-  npx: 'npx',
-  pnpm: 'pnpm',
-  docker: 'docker',
-  kubectl: 'kubectl',
-  aws: 'aws',
-  ruff: 'ruff',
-  pytest: 'pytest',
-  mypy: 'mypy',
-  uv: 'uv',
-  dotnet: 'dotnet',
-  jest: 'jest',
-  vitest: 'vitest',
-  prisma: 'prisma',
-  tsc: 'tsc',
-  playwright: 'playwright',
-  curl: 'curl',
-  wget: 'wget',
-  grep: 'grep',
-  rg: 'rg',
-  find: 'find',
-  psql: 'psql',
-  mvn: 'mvn',
-  gradlew: 'gradlew',
-  sbt: 'sbt',
-  pip: 'pip',
-  rspec: 'rspec',
-  rubocop: 'rubocop',
-  rake: 'rake',
-  php: 'php',
-  phpunit: 'phpunit',
-  phpstan: 'phpstan',
-  pint: 'pint',
-  pest: 'pest',
-  next: 'next',
-} as const
+/** Default timeout for rewrite probing in milliseconds. */
+const DEFAULT_REWRITE_TIMEOUT_MS = 1_000
 
 /**
- * Extract the first whitespace-delimited token of a shell command. Quotes and
- * leading environment assignments (`FOO=bar cmd`) are not special-cased: such
- * commands fall back to plain `bash -c`, which is the safe default.
- * @param command - the raw shell source.
- * @returns the leading executable token, or undefined when empty.
- */
-function firstToken(command: string): string | undefined {
-  const trimmed = command.trimStart()
-  if (trimmed.length === 0) return undefined
-  const end = trimmed.search(/\s/)
-  // trimmed is non-empty and starts with a non-whitespace byte, so the token
-  // is never empty; the conditional only guards the no-whitespace case.
-  return end === -1 ? trimmed : trimmed.slice(0, end)
-}
-
-/**
- * Decide whether `command` should be routed through `rtk`, and the argv to use
- * when it should. Returns the original command unchanged for every
- * non-eligible case (complex shell, non-whitelisted tool, or rtk absent).
+ * Decide whether `command` should be routed through `rtk`, using RTK's
+ * native rewrite engine (`rtk hook check <command>`).
  *
- * The returned string is handed straight to `bash -c`, so a wrapped result is
- * still executed through the shell and preserves the executor's
- * workdir/timeout/env settings. RTK itself may change output and exit codes.
+ * Returns the rewritten command if supported by RTK, or the original command
+ * unchanged if RTK is absent, returns non-zero, or times out.
  *
- * @param command - the raw shell command the model asked to run.
- * @param rtkAvailable - whether the `rtk` binary resolved on PATH.
- * @returns the command to execute (possibly wrapped), including unchanged empty input.
+ * @param command - the raw shell command requested by the caller.
+ * @param rtkAvailable - whether the `rtk` binary is available on PATH.
+ * @param timeoutMs - optional timeout for the check process (defaults to 1000ms).
+ * @returns the command to execute (rewritten or unchanged original).
  */
-export function wrapWithRtk(command: string, rtkAvailable: boolean): string {
+export function wrapWithRtk(command: string, rtkAvailable: boolean, timeoutMs = DEFAULT_REWRITE_TIMEOUT_MS): string {
   if (!rtkAvailable) return command
-  if (SHELL_METACHARACTER.test(command)) return command
-  const token = firstToken(command)
-  if (token === undefined) return command
-  if (!Object.hasOwn(RTK_COMMAND_MAP, token)) return command
-  const rtkCommand = RTK_COMMAND_MAP[token]
-  const rest = command.trimStart().slice(token.length)
-  return `rtk ${rtkCommand}${rest}`
+  if (!command.trim()) return command
+
+  try {
+    const result = spawnSync('rtk', ['hook', 'check', command], {
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: timeoutMs,
+      encoding: 'utf-8',
+      killSignal: 'SIGKILL',
+    })
+
+    if (result.status === 0 && result.stdout) {
+      const rewritten = result.stdout.trim()
+      if (rewritten.length > 0) {
+        return rewritten
+      }
+    }
+  } catch {
+    // On any unexpected failure or timeout, fall back safely to original command.
+  }
+
+  return command
 }
+

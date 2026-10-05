@@ -78,9 +78,9 @@ describe('RTK published executor contract', () => {
     expect(spec.sandboxPolicy).toBe(sandboxPolicy)
   })
 
-  it('passes complex, unknown and already wrapped commands through', async () => {
+  it('passes unsupported and already wrapped commands through', async () => {
     const { ctx } = await setup()
-    for (const command of ['git status | grep x', 'ls -la', 'rtk git status', 'git status && git diff', 'printf hello']) {
+    for (const command of ['echo hello', 'rtk git status', 'printf hello']) {
       expect(ctx.shell.resolve({ command }).command).toBe(command)
     }
   })

@@ -39,14 +39,20 @@ const invalidTimeouts = [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1,
 
 describe('public RTK executor plugin', () => {
   it('exports the default/named subclass, inherited execution and dependencies', () => {
+    probe.mockImplementation((_cmd, args) => {
+      if (args?.[0] === 'hook' && args?.[1] === 'check') {
+        const cmd = args[2] as string
+        if (cmd?.startsWith('git ')) return { status: 0, stdout: `rtk ${cmd}` }
+      }
+      return { status: 1 }
+    })
     expect(Rtk.default).toBe(Rtk.RtkBashExecutor)
     expect(Rtk.name).toBe('bash-rtk')
     expect(Rtk.inject).toEqual(['subprocess', 'sandbox', 'sandboxPolicy'])
     expect(RtkBashExecutor.inject).toEqual(SandboxBashExecutor.inject)
     expect(RtkBashExecutor.Config).toBe(Rtk.Config)
     expect(RtkBashExecutor.prototype).toBeInstanceOf(SandboxBashExecutor)
-    expect(RtkBashExecutor.prototype.execute).toBe(SandboxBashExecutor.prototype.execute)
-    expect(Object.hasOwn(RtkBashExecutor.prototype, 'execute')).toBe(false)
+    expect(Object.hasOwn(RtkBashExecutor.prototype, 'execute')).toBe(true)
     expect(Rtk.wrapWithRtk('git status', true)).toBe('rtk git status')
   })
 
@@ -95,17 +101,24 @@ describe('public RTK executor plugin', () => {
   })
 
   it('probes once per activation with a bounded hard-kill subprocess', async () => {
-    probe.mockReturnValue({ status: 0 })
+    probe.mockImplementation((_cmd, args) => {
+      if (args?.[0] === '--version') return { status: 0 }
+      if (args?.[0] === 'hook' && args?.[1] === 'check') {
+        const cmd = args[2] as string
+        if (cmd?.startsWith('git ')) return { status: 0, stdout: `rtk ${cmd}` }
+      }
+      return { status: 1 }
+    })
     const { ctx, fiber } = await setup({ probeTimeoutMs: 75 })
     expect(ctx.shell).toBeInstanceOf(RtkBashExecutor)
-    expect(probe).toHaveBeenCalledExactlyOnceWith('rtk', ['--version'], {
+    expect(probe).toHaveBeenCalledWith('rtk', ['--version'], {
       stdio: 'ignore', timeout: 75, killSignal: 'SIGKILL',
     })
     expect(ctx.shell.resolve({ command: 'git status' }).command).toBe('rtk git status')
     expect(ctx.shell.resolve({ command: 'git diff' }).command).toBe('rtk git diff')
-    expect(probe).toHaveBeenCalledTimes(1)
+    expect(probe.mock.calls.filter(c => c[1]?.[0] === '--version')).toHaveLength(1)
     await fiber.restart()
-    expect(probe).toHaveBeenCalledTimes(2)
+    expect(probe.mock.calls.filter(c => c[1]?.[0] === '--version')).toHaveLength(2)
     expect(ctx.shell.resolve({ command: 'git status' }).command).toBe('rtk git status')
   })
 
@@ -123,9 +136,16 @@ describe('public RTK executor plugin', () => {
   })
 
   it.each([true, false])('skips probing for explicit availability %s', async rtkAvailable => {
+    probe.mockImplementation((_cmd, args) => {
+      if (args?.[0] === 'hook' && args?.[1] === 'check') {
+        const cmd = args[2] as string
+        if (cmd?.startsWith('git ')) return { status: 0, stdout: `rtk ${cmd}` }
+      }
+      return { status: 1 }
+    })
     const { ctx } = await setup({ rtkAvailable })
     expect(ctx.shell.resolve({ command: 'git status' }).command).toBe(rtkAvailable ? 'rtk git status' : 'git status')
-    expect(probe).not.toHaveBeenCalled()
+    expect(probe).not.toHaveBeenCalledWith('rtk', ['--version'], expect.anything())
   })
 
   it('does not register the shell when the probe throws before super', () => {
