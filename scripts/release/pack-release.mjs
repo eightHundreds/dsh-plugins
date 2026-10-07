@@ -7,7 +7,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { load, dump } from 'js-yaml'
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const [repository = process.env.GITHUB_REPOSITORY, tag = process.env.GITHUB_REF_NAME] = process.argv.slice(2)
 assert(repository && /^[\w.-]+\/[\w.-]+$/.test(repository), 'Usage: pnpm release:pack <owner/repo> <release-tag>')
 assert(tag && tag !== '.' && tag !== '..' && !/[\s/\\]/.test(tag), 'Release tag must be a single non-empty path segment')

@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { load } from 'js-yaml'
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const files = (await readdir(resolve(root, 'artifacts'))).filter((file) => file.endsWith('.tgz'))
 assert(files.length > 0, 'No tarballs produced')
 for (const file of files) {

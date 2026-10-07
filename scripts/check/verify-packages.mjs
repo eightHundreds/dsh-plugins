@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { load } from 'js-yaml'
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const packages = []
 for (const entry of await readdir(resolve(root, 'packages'), { withFileTypes: true })) {
   if (!entry.isDirectory()) continue
@@ -46,6 +46,38 @@ for (const { pkg, dir } of packages) {
     if (!path || path.includes('*')) continue
     assert((await stat(resolve(dir, path))).isFile(), pkg.name + ': missing export ' + path)
     if (typeof value === 'object' && value.types) assert((await stat(resolve(dir, value.types))).isFile())
+  }
+  const sourceDir = resolve(dir, 'src')
+  async function verifyCssModules(current) {
+    for (const entry of await readdir(current, { withFileTypes: true })) {
+      const path = resolve(current, entry.name)
+      if (entry.isDirectory()) {
+        await verifyCssModules(path)
+        continue
+      }
+      if (!/\.(?:[cm]?[jt]sx?)$/.test(entry.name)) continue
+      const source = await readFile(path, 'utf8')
+      const imports = source.matchAll(/(?:from\s*|import\s*)['\"]([^'\"]+\.css)['\"]/g)
+      for (const [, specifier] of imports) {
+        assert(specifier.endsWith('.module.css') || !specifier.startsWith('.'),
+          `${pkg.name}: local component CSS must use CSS Modules (.module.css): ${specifier}`)
+      }
+    }
+  }
+  if ((await stat(sourceDir).catch(() => undefined))?.isDirectory()) await verifyCssModules(sourceDir)
+  // DSH's client-modules registry reads exports["./client"] as a plain relative
+  // path: it accepts a string or an object with a string `default`, and rejects
+  // the `import` condition other tooling uses. A rejected entry aborts startup.
+  if (pkg.dsh?.client?.platform === 'web') {
+    const entry = pkg.exports?.['./client']
+    if (typeof entry === 'object' && entry !== null && 'import' in entry && !('default' in entry)) {
+      assert.fail(`${pkg.name}: exports["./client"] uses "import" condition without "default", which DSH client-modules rejects`)
+    }
+    const bundle = typeof entry === 'string'
+      ? entry
+      : typeof entry === 'object' && entry !== null && typeof entry.default === 'string' ? entry.default : undefined
+    assert(bundle, pkg.name + ': exports["./client"] must be a string or an object with a string default')
+    assert((await stat(resolve(dir, bundle))).isFile(), pkg.name + ': missing client bundle ' + bundle)
   }
   console.log('Verified ' + pkg.name)
 }

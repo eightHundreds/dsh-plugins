@@ -14,8 +14,9 @@ DeepSeek Harness (DSH) 社区插件 Monorepo。采用 pnpm workspace + TypeScrip
 # 1. 安装依赖
 pnpm install
 
-# 2. 新建插件
-pnpm new:plugin <name>
+# 2. 新建插件 (支持纯 Host 插件与带前端 UI 的插件)
+pnpm new:plugin <name>         # 创建纯 Host 插件
+pnpm new:plugin <name> --ui    # 创建带 Web Client UI + CSS Modules 的双端插件
 
 # 3. 完整检查 (类型检查 + 单元测试)
 pnpm check

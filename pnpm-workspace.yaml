@@ -1,6 +1,7 @@
 packages:
   - 'packages/*'
 
+confirmModulesPurge: false
 # Resolve SDK peers in development; Release manifests keep host peers external.
 autoInstallPeers: true
 strictPeerDependencies: true

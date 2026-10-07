@@ -8,7 +8,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { load } from 'js-yaml'
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const [repository = process.env.GITHUB_REPOSITORY, tag = process.env.GITHUB_REF_NAME] = process.argv.slice(2)
 assert(repository && tag, 'Usage: pnpm test:release <owner/repo> <release-tag> (run release:pack first)')
 const assets = resolve(root, 'artifacts/release', tag)
