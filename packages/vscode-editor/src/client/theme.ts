@@ -1,5 +1,5 @@
 import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
-import { monaco } from './monaco.js'
+import { monaco } from './monaco.ts'
 
 export const THEME_ID = 'dsk-vscode-editor'
 

@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
 import type { DocumentPreviewProps } from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
-import { monaco } from './monaco.js'
-import { THEME_ID } from './theme.js'
+import { monaco } from './monaco.ts'
+import { getLanguageForPath } from './languages.ts'
+import { THEME_ID } from './theme.ts'
+import styles from './preview.module.css'
 
 // Tab lifetime signals let answered navigation survive body remounts without retaining closed tabs.
 const answeredNavigation = new WeakMap<AbortSignal, string>()
@@ -16,7 +18,7 @@ export function MonacoPreview({ content, resourceAddress, wrap, scrollportRef, u
   useEffect(() => {
     if (!container.current) return
     const path = decodeURIComponent(new URL(resourceAddress).pathname)
-    const language = /[.](ts|tsx|mts|cts)$/i.test(path) ? 'typescript' : 'javascript'
+    const language = getLanguageForPath(path)
     const model = monaco.editor.createModel(content.kind === 'text' ? content.text : '', language)
     const instance = monaco.editor.create(container.current, {
       model, theme: THEME_ID, readOnly: true, domReadOnly: true,
@@ -57,5 +59,5 @@ export function MonacoPreview({ content, resourceAddress, wrap, scrollportRef, u
     editor.current?.setPosition({ lineNumber: Math.max(1, line), column: 1 })
     editor.current?.revealLineInCenter(Math.max(1, line))
   }, [resourceAddress, tab.signal, navigation.revision, navigation.params, content])
-  return <div ref={container} data-code-preview data-vscode-editor-preview style={{ flex: '1 1 auto', width: '100%', height: '100%', minHeight: 0, minWidth: 0, overflow: 'hidden', whiteSpace: 'normal' }} />
+  return <div ref={container} data-code-preview data-vscode-editor-preview className={styles.preview} />
 }

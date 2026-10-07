@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import { fileURLToPath } from 'node:url'
-import { assetHandler } from './assets.js'
+import { assetHandler } from './assets.ts'
 
 export const name = 'vscode-editor'
 export const inject = ['webServer']

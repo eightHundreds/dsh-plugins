@@ -1,6 +1,6 @@
 # @dsk/vscode-editor
 
-将 DSH 右侧文件预览中的 JavaScript / TypeScript 文件优先交给 Monaco 显示。支持 `js`、`jsx`、`mjs`、`cjs`、`ts`、`tsx`、`mts`、`cts`；官方代码与纯文本查看器保留在查看器菜单中。
+将 DSH 右侧文件预览中的常用代码文件优先交给 Monaco 显示。支持 JS/TS、Python、Go、Rust、Java、C/C++、C#、HTML、CSS/SCSS/Less、JSON、YAML、XML、SQL、Shell、Markdown、PHP、Ruby、Swift、Kotlin 等近 200 种常见后缀；官方代码与纯文本查看器保留在查看器菜单中。
 
 当前为只读预览：语法高亮、行号、查找、文本选择、自动布局及官方换行开关。内容仍由官方预览服务分页读取，继续使用原有加载更多、刷新和外部修改提示；支持通过文件导航参数定位已加载的行。没有保存、文件树替换或共享编辑器服务。
 
@@ -17,7 +17,7 @@ pnpm --filter @dsk/vscode-editor dev
 pnpm --filter @dsk/vscode-editor test
 ```
 
-`dev` 监听客户端源码；Host 变更需重新执行 build。包独立发布，通过 GitHub Release 附件交付。Desktop 本地开发使用 `link:` 安装并配置 HMR 的 lib 监听目录。
+Host、Monaco 客户端和 editor worker 均由 tsdown 编译打包；`tsc --noEmit` 仅用于类型检查。`dev` 监听 Host 和客户端源码；worker 依赖变更需重新执行 build。包独立发布，通过 GitHub Release 附件交付。Desktop 本地开发使用 `link:` 安装并配置 HMR 的 lib 监听目录。
 
 ## 手工验收
 

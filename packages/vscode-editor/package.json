@@ -1,7 +1,7 @@
 {
   "name": "@dsk/vscode-editor",
   "version": "0.0.0",
-  "description": "Monaco previews for JavaScript and TypeScript files, integrated with DSH themes.",
+  "description": "Monaco previews for code files, integrated with DSH themes.",
   "type": "module",
   "license": "UNLICENSED",
   "main": "./lib/index.js",
@@ -15,8 +15,8 @@
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./locale/*.json": "./locale/*.json",
     "./client": {
-      "types": "./lib/client/index.d.ts",
-      "import": "./lib/client.js"
+      "types": "./lib/client.d.ts",
+      "default": "./lib/client.js"
     }
   },
   "files": [
@@ -25,7 +25,7 @@
     "locale"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && node build.mjs",
+    "build": "node build.mjs",
     "dev": "node build.mjs --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prepack": "pnpm run build",
@@ -45,16 +45,18 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.4",
-    "@deepseek-ai/dsh-host-webserver": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-sidebar-documentpreview": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-renderer": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-theme": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-client-ui-slots": "0.2.0-rc.2",
     "@deepseek-ai/dsh-client-locale": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-sidebar-documentpreview": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-theme": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-host-webserver": "0.2.0-rc.2",
+    "@tsdown/css": "0.23.0",
     "@types/node": "^24.0.0",
     "@types/react": "^18.3.0",
     "react": "^18.3.1",
-    "esbuild": "^0.25.9"
+    "tsdown": "0.23.0",
+    "typescript": "5.9.3"
   },
   "dsh": {
     "bundle": {

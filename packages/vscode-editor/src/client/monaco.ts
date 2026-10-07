@@ -1,6 +1,5 @@
 import * as monaco from 'monaco-editor/editor/editor.api.js'
-import 'monaco-editor/languages/definitions/javascript/register.js'
-import 'monaco-editor/languages/definitions/typescript/register.js'
+import './languages.ts'
 
 import 'monaco-editor/editor/browser/coreCommands.js'
 import 'monaco-editor/features/find/register.js'
