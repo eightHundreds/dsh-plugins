@@ -3,7 +3,7 @@ import type { DocumentPreviewProps } from '@deepseek-ai/dsh-client-ui-sidebar-do
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { parseFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
-import { bindEditorLsp, editorModelUri, fileUriPath, locationAddress, locationLabel, monacoRange, type QueryEditorLsp, type ResultsState } from './lsp.ts'
+import { bindEditorLsp, editorModelUri, locationAddress, locationLabel, monacoRange, sameSessionFile, type QueryEditorLsp, type ResultsState } from './lsp.ts'
 import type {} from './locales.ts'
 import { monaco } from './monaco.ts'
 import { getLanguageForPath } from './languages.ts'
@@ -42,10 +42,8 @@ export function MonacoPreview({ content, resourceAddress, wrap, scrollportRef, u
     const binding = file?.scope === 'session' ? bindEditorLsp({
       editor: instance, model, sessionId: file.sessionId as SessionId, filePath: file.path, signal: tab.signal,
       query: queryLsp, label: operation => live.current.t(operation), showResults: state => live.current.setResults(state),
-      selectLocation: location => {
-        let path: string
-        try { path = fileUriPath(location.uri) } catch { return false }
-        if (path !== file.path) return false
+      selectLocation: (location, result) => {
+        if (!sameSessionFile(file.sessionId, file.path, location.uri, result.resolvedWorkspaceUri)) return false
         const range = monacoRange(location.range)
         instance.setSelection(range); instance.revealRangeInCenter(range); instance.focus(); return true
       },

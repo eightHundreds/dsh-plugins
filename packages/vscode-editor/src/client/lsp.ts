@@ -1,6 +1,6 @@
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import { fileAddressFor } from '@deepseek-ai/dsh-util-workspace-path'
+import { fileAddressFor, sessionFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
 import type { EditorLspRequest, EditorLspResult, LspRange } from '../lsp-contract.ts'
 import { monaco } from './monaco.ts'
 
@@ -35,6 +35,11 @@ export function locationAddress(sessionId: string, uri: string, workspaceUri: st
   return fileAddressFor(sessionId, cwd, path)
 }
 
+/** Compare locations through their DSH session addresses, not raw URI and preview path spellings. */
+export function sameSessionFile(sessionId: string, filePath: string, uri: string, workspaceUri: string): boolean {
+  try { return locationAddress(sessionId, uri, workspaceUri) === sessionFileAddress(sessionId, filePath) } catch { return false }
+}
+
 /** Prefer a readable Host path; malformed locations keep their original URI. */
 export function locationLabel(uri: string): string {
   try { return fileUriPath(uri) } catch { return uri }
@@ -46,7 +51,7 @@ export function bindEditorLsp(options: {
   sessionId: SessionId; filePath: string; signal: AbortSignal; query: QueryEditorLsp;
   label: (operation: NavigationOperation) => string; showResults: (state: ResultsState | null) => void;
   openLocation: (location: LocationResult['locations'][number], result: LocationResult) => void;
-  selectLocation: (location: LocationResult['locations'][number]) => boolean;
+  selectLocation: (location: LocationResult['locations'][number], result: LocationResult) => boolean;
 }): { dispose(): void; cancelNavigation(): void; open(location: LocationResult['locations'][number], result: LocationResult): void } {
   const { editor, model, signal } = options
   let disposed = false
@@ -71,6 +76,7 @@ export function bindEditorLsp(options: {
       }, controller.signal)
       if (!current()) return
       if (!response.ok) throw new Error(response.error.message)
+      if (response.value.kind === 'locations') workspaceUri = response.value.resolvedWorkspaceUri
       return response.value
     } catch (error) {
       if (current()) throw error
@@ -88,6 +94,17 @@ export function bindEditorLsp(options: {
       return result.locations.map(location => ({ uri: monaco.Uri.parse(location.uri), range: monacoRange(location.range) }))
     } catch { return undefined }
   }
+  let workspaceUri = ''
+  const opener = monaco.editor.registerEditorOpener({ openCodeEditor(source: monaco.editor.ICodeEditor, resource: monaco.Uri, selection?: monaco.IRange | monaco.IPosition) {
+    if (source !== editor || resource.scheme !== 'file' || workspaceUri === '') return false
+    const start = selection && 'startLineNumber' in selection ? selection.startLineNumber : selection?.lineNumber
+    const startColumn = selection && 'startColumn' in selection ? selection.startColumn : selection?.column
+    if (!start || !startColumn) return false
+    const location = { uri: resource.toString(), range: { start: { line: start - 1, character: startColumn - 1 }, end: { line: start - 1, character: startColumn - 1 } } }
+    const result: LocationResult = { kind: 'locations', locations: [location], resolvedWorkspaceUri: workspaceUri, truncated: false }
+    if (!options.selectLocation(location, result)) options.openLocation(location, result)
+    return true
+  } })
   const registrations = [
     monaco.languages.registerHoverProvider('*', {
       async provideHover(candidate, position, token) {
@@ -125,11 +142,11 @@ export function bindEditorLsp(options: {
     })),
   ]
   const open = (location: LocationResult['locations'][number], result: LocationResult): void => {
-    if (!options.selectLocation(location)) options.openLocation(location, result)
+    if (!options.selectLocation(location, result)) options.openLocation(location, result)
   }
   return {
     open,
     cancelNavigation() { navigationRevision++; for (const operation of navigationOperations) pending.get(operation)?.abort() },
-    dispose() { disposed = true; navigationRevision++; cancelAll(); change.dispose(); signal.removeEventListener('abort', onAbort); for (const registration of registrations) registration.dispose() },
+    dispose() { disposed = true; navigationRevision++; cancelAll(); change.dispose(); opener.dispose(); signal.removeEventListener('abort', onAbort); for (const registration of registrations) registration.dispose() },
   }
 }
