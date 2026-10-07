@@ -150,8 +150,8 @@ function failureMessage(error: unknown): string {
  * Register the configured stdio provider for the language, or a structured
  * no-server fallback when the executable cannot be resolved at load.
  *
- * The pack never crashes the session: an unresolvable server only disables
- * this language routing and surfaces `LSP_UNAVAILABLE` on queries.
+ * A missing executable disables this language routing and surfaces
+ * `LSP_UNAVAILABLE` on queries. Other setup errors retain official behavior.
  * @param ctx - the plugin context (must inject `fs`, `lsp`, `subprocess`).
  * @param config - the resolved pack configuration.
  */

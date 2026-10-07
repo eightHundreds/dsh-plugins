@@ -44,7 +44,7 @@ function clientEnvelope() {
 }
 
 export const host = {
-  entry: { index: 'src/index.ts', assets: 'src/assets.ts' }, outDir: 'lib',
+  entry: { index: 'src/index.ts', assets: 'src/assets.ts', 'lsp-query': 'src/lsp-query.ts', 'lsp-remote': 'src/lsp-remote.ts', 'lsp-host': 'src/lsp-host.ts' }, outDir: 'lib',
   format: 'esm', platform: 'node', target: 'es2024', fixedExtension: false,
   clean: false, dts: true, deps: { neverBundle: [/^@deepseek-ai\//] },
 }
@@ -65,7 +65,7 @@ export function client() {
     outputOptions: {
       codeSplitting: false,
       entryFileNames: '[name].js',
-      banner: 'window.__ModuleLoader__.load({id:"@dsk/vscode-editor",factory:(require)=>{var module={exports:{}};var exports=module.exports;',
+      banner: 'window.__ModuleLoader__.load({id:"@dshx/vscode-editor",factory:(require)=>{var module={exports:{}};var exports=module.exports;',
       footer: 'const __DSH_CSS_MODULES__ = "__DSH_CSS_MODULES__";return module.exports;}});',
     },
     css: {

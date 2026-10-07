@@ -1,5 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { DocumentPreviewProps } from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
+import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { parseFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
+import { bindEditorLsp, editorModelUri, locationAddress, type QueryEditorLsp, type ResultsState } from './lsp.ts'
+import type {} from './locales.ts'
 import { monaco } from './monaco.ts'
 import { getLanguageForPath } from './languages.ts'
 import { THEME_ID } from './theme.ts'
@@ -9,17 +14,23 @@ import styles from './preview.module.css'
 const answeredNavigation = new WeakMap<AbortSignal, string>()
 
 /** The official owner keeps reading/paging/reload; this body owns only the read-only editor. */
-export function MonacoPreview({ content, resourceAddress, wrap, scrollportRef, useTabInfo }: DocumentPreviewProps) {
+export type MonacoPreviewProps = DocumentPreviewProps & PropsLocale<'vscodeEditor'> & { queryLsp: QueryEditorLsp }
+
+export function MonacoPreview({ content, resourceAddress, wrap, scrollportRef, useTabInfo, queryLsp, t }: MonacoPreviewProps) {
   const container = useRef<HTMLDivElement>(null)
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const { tab } = useTabInfo()
   const navigation = tab.navigation
+  const [results, setResults] = useState<ResultsState | null>(null)
+  const lsp = useRef<ReturnType<typeof bindEditorLsp> | null>(null)
+  const live = useRef({ t, actions: tab.actions, setResults })
+  live.current = { t, actions: tab.actions, setResults }
 
   useEffect(() => {
     if (!container.current) return
-    const path = decodeURIComponent(new URL(resourceAddress).pathname)
-    const language = getLanguageForPath(path)
-    const model = monaco.editor.createModel(content.kind === 'text' ? content.text : '', language)
+    const file = parseFileAddress(resourceAddress)
+    const language = getLanguageForPath(file?.path ?? '')
+    const model = monaco.editor.createModel(content.kind === 'text' ? content.text : '', language, editorModelUri(file?.path ?? 'untitled'))
     const instance = monaco.editor.create(container.current, {
       model, theme: THEME_ID, readOnly: true, domReadOnly: true,
       wordWrap: wrap ? 'on' : 'off', automaticLayout: true, minimap: { enabled: false }, scrollBeyondLastLine: false,
@@ -27,6 +38,21 @@ export function MonacoPreview({ content, resourceAddress, wrap, scrollportRef, u
       fontSize: 13, padding: { top: 12, bottom: 12 }, renderLineHighlight: 'line',
     })
     editor.current = instance
+    setResults(null)
+    const binding = file?.scope === 'session' ? bindEditorLsp({
+      editor: instance, model, sessionId: file.sessionId as SessionId, filePath: file.path, signal: tab.signal,
+      query: queryLsp, label: operation => live.current.t(operation), showResults: state => live.current.setResults(state),
+      selectLocation: location => {
+        const target = new URL(location.uri)
+        if (target.protocol !== 'file:' || decodeURIComponent(target.pathname).replace(/^\/([A-Za-z]:\/)/, '$1') !== file.path) return false
+        const range = { startLineNumber: location.range.start.line + 1, startColumn: location.range.start.character + 1, endLineNumber: location.range.end.line + 1, endColumn: location.range.end.character + 1 }
+        instance.setSelection(range); instance.revealRangeInCenter(range); instance.focus(); return true
+      },
+      openLocation: (location, result) => live.current.actions.openResource(
+        locationAddress(file.sessionId, location.uri, result.resolvedWorkspaceUri), { params: { line: location.range.start.line + 1 } },
+      ),
+    }) : null
+    lsp.current = binding
     // Monaco scrolls virtually. Adapt the owner's native-scroll contract explicitly.
     const port = container.current
     Object.defineProperties(port, {
@@ -35,8 +61,8 @@ export function MonacoPreview({ content, resourceAddress, wrap, scrollportRef, u
     })
     const scroll = instance.onDidScrollChange(() => port.dispatchEvent(new Event('scroll', { bubbles: true })))
     scrollportRef(port)
-    return () => { scroll.dispose(); scrollportRef(null); editor.current = null; instance.dispose(); model.dispose(); Reflect.deleteProperty(port, 'scrollTop'); Reflect.deleteProperty(port, 'scrollHeight') }
-  }, [resourceAddress, scrollportRef])
+    return () => { binding?.dispose(); lsp.current = null; scroll.dispose(); scrollportRef(null); editor.current = null; instance.dispose(); model.dispose(); Reflect.deleteProperty(port, 'scrollTop'); Reflect.deleteProperty(port, 'scrollHeight') }
+  }, [resourceAddress, scrollportRef, queryLsp, tab.signal])
   useEffect(() => {
     if (content.kind !== 'text') return
     const model = editor.current?.getModel()
@@ -59,5 +85,36 @@ export function MonacoPreview({ content, resourceAddress, wrap, scrollportRef, u
     editor.current?.setPosition({ lineNumber: Math.max(1, line), column: 1 })
     editor.current?.revealLineInCenter(Math.max(1, line))
   }, [resourceAddress, tab.signal, navigation.revision, navigation.params, content])
-  return <div ref={container} data-code-preview data-vscode-editor-preview className={styles.preview} />
+  return <div className={styles.body}>
+    <div ref={container} data-code-preview data-vscode-editor-preview className={styles.preview} />
+    {results && <section className={styles.results} aria-label={t('results')} onKeyDown={event => {
+      if (event.key === 'Escape') { lsp.current?.cancelNavigation(); setResults(null); editor.current?.focus() }
+    }}>
+      <div className={styles.resultsHeader}>
+        <strong>{t(results.operation)}</strong>
+        <button type="button" onClick={() => { lsp.current?.cancelNavigation(); setResults(null); editor.current?.focus() }} aria-label={t('close')}>×</button>
+      </div>
+      {results.loading && <p role="status">{t('loading')}</p>}
+      {results.error && <p role="alert">{t('failed', { message: results.error })}</p>}
+      {results.result && <>
+        {results.result.locations.length === 0 && <p role="status">{t('empty')}</p>}
+        {results.result.truncated && <p role="status">{t('truncated')}</p>}
+        <ul>{results.result.locations.map((location, index) => {
+          let label = location.uri
+          try { label = decodeURIComponent(new URL(location.uri).pathname) } catch { /* Preserve the URI for display. */ }
+          return <li key={location.uri + ':' + location.range.start.line + ':' + location.range.start.character + ':' + index}>
+            <button type="button" title={label} onClick={() => {
+              const file = parseFileAddress(resourceAddress)
+              if (file?.scope !== 'session' || !results.result) return
+              try {
+                tab.actions.openResource(locationAddress(file.sessionId, location.uri, results.result.resolvedWorkspaceUri), { params: { line: location.range.start.line + 1 } })
+              } catch (error) {
+                setResults({ ...results, error: error instanceof Error ? error.message : String(error) })
+              }
+            }}>{label}:{location.range.start.line + 1}</button>
+          </li>
+        })}</ul>
+      </>}
+    </section>}
+  </div>
 }

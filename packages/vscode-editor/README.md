@@ -1,4 +1,4 @@
-# @dsk/vscode-editor
+# @dshx/vscode-editor
 
 将 DSH 右侧文件预览中的常用代码文件优先交给 Monaco 显示。支持 JS/TS、Python、Go、Rust、Java、C/C++、C#、HTML、CSS/SCSS/Less、JSON、YAML、XML、SQL、Shell、Markdown、PHP、Ruby、Swift、Kotlin 等近 200 种常见后缀；官方代码与纯文本查看器保留在查看器菜单中。
 
@@ -8,13 +8,21 @@
 
 Monaco CSS 与字体内嵌于客户端包，editor worker 通过本地 `/vscode-editor/assets` 路由加载，无运行时 CDN。适配 DSH `0.2.0-rc.2`；客户端声明 `platform: web`，对应 Desktop 使用的同一浏览器插件运行时。
 
+## LSP 能力
+
+通过插件自有 Remote 查询桥接消费 DSH 已挂载的 `ctx.lsp`，支持符号悬浮提示、跳转定义（F12）、查找引用（Shift+F12）和跳转实现（Ctrl/Cmd+F12）。语言服务器仍由 DSH 的 LSP provider 配置与管理；插件不启动自己的服务器。
+
+查询使用文件地址所属会话的工作区，优先选择该会话已激活 preset 中的 LSP，再使用 Host LSP。没有 provider 或会话工作区时，普通预览继续可用。查询基于磁盘文件，当前只读预览不提供未保存文本同步、补全、诊断、重命名或格式化。
+
+单个定义/实现直接跳转，多个位置与引用使用结果列表；跨文件复用 DSH 标签页并定位行，同文件可选择精确范围。引用包含声明。最多显示 200 个位置，查询超时为 10 秒；不支持打开非 `file:` LSP 目标。分页文件的目标行需由原有预览加载到该行后定位。
+
 ## 开发
 
 ```bash
-pnpm --filter @dsk/vscode-editor typecheck
-pnpm --filter @dsk/vscode-editor build
-pnpm --filter @dsk/vscode-editor dev
-pnpm --filter @dsk/vscode-editor test
+pnpm --filter @dshx/vscode-editor typecheck
+pnpm --filter @dshx/vscode-editor build
+pnpm --filter @dshx/vscode-editor dev
+pnpm --filter @dshx/vscode-editor test
 ```
 
 Host、Monaco 客户端和 editor worker 均由 tsdown 编译打包；`tsc --noEmit` 仅用于类型检查。`dev` 监听 Host 和客户端源码；worker 依赖变更需重新执行 build。包独立发布，通过 GitHub Release 附件交付。Desktop 本地开发使用 `link:` 安装并配置 HMR 的 lib 监听目录。

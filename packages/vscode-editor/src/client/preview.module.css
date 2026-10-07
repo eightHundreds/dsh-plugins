@@ -1,3 +1,13 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .preview {
   flex: 1 1 auto;
   width: 100%;
@@ -7,3 +17,57 @@
   overflow: hidden;
   white-space: normal;
 }
+
+.results {
+  flex: 0 1 auto;
+  max-height: 40%;
+  overflow: auto;
+  border-top: 1px solid var(--ds-border-color, #8886);
+  background: var(--ds-surface, inherit);
+  color: var(--ds-text-primary, inherit);
+  font-size: 12px;
+}
+
+.resultsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+}
+
+.results p {
+  margin: 6px 10px;
+}
+
+.results ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.results button {
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  font: inherit;
+  padding: 4px 6px;
+}
+
+.results li button {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.results button:hover,
+.results button:focus-visible {
+  background: var(--ds-hover-bg, #8882);
+}
+

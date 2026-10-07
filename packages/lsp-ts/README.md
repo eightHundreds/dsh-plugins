@@ -50,6 +50,6 @@ pnpm --filter @dsk/lsp-ts typecheck / build / test。测试使用真实官方 Co
 
 ## 来源
 
-移植自 [dsh-lsp-packs](https://github.com/988hj7tczd-oss/dsh-lsp-packs/tree/258bb6409c504fa1eed20b6f70d13009522ca0ce/dsh-lsp-ts)，MIT（完整许可随包保留）。截至调查时 3 stars、0 forks。修正上游 catch-all fallback 和丢失自定义扩展映射的问题。
+移植自 [dsh-lsp-packs](https://github.com/988hj7tczd-oss/dsh-lsp-packs/tree/258bb6409c504fa1eed20b6f70d13009522ca0ce/dsh-lsp-ts)，MIT（完整许可随包保留）。截至调查时 3 stars、0 forks。修正上游 catch-all fallback、丢失自定义扩展映射、Cordis array schema 未显式默认导致 --stdio 丢失的问题。
 
 对照官方 master 5badb15009ae1756c3afe0ae0cef1faafc290ccc；本地只读 checkout 639ed015397290b3745d163aafe02ffee4aa3f84 的 lsp、lsp-stdio、tool-lsp 三个入口 blob 与该 master 相同。参考 [官方 LSP 文档](https://github.com/deepseek-ai/deepseek-harness/blob/5badb15009ae1756c3afe0ae0cef1faafc290ccc/docs/subsystems/lsp.md)。

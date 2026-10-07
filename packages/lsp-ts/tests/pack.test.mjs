@@ -65,7 +65,7 @@ test('real TS server: four operations, canonical sharing, two workspaces, dispos
   const spawn = ctx.subprocess.spawn.bind(ctx.subprocess)
   ctx.subprocess.spawn = spec => {
     const handle = spawn(spec)
-    assert.deepEqual(spec.args, ['--stdio'])
+    assert.deepEqual(spec.argv.slice(1), ['--stdio'])
     handles.push(handle)
     return handle
   }
