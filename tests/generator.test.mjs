@@ -56,7 +56,7 @@ test('generator creates a valid standalone package and refuses overwrite/travers
     const generated = run(dir, harness, 'test-feature')
     assert.equal(generated.status, 0, generated.stderr)
     const manifest = JSON.parse(await readFile(resolve(dir, 'packages/test-feature/package.json'), 'utf8'))
-    assert.equal(manifest.name, '@dsk/test-feature')
+    assert.equal(manifest.name, '@dshx/test-feature')
     const source = await readFile(resolve(dir, 'packages/test-feature/src/index.ts'), 'utf8')
     assert(source.includes("name = 'test-feature'"))
     const tsdownConfig = await readFile(resolve(dir, 'packages/test-feature/tsdown.config.ts'), 'utf8')
@@ -78,7 +78,7 @@ test('generator creates a valid UI package with --ui flag', async () => {
     const generated = run(dir, harness, 'test-ui-plugin', '--ui')
     assert.equal(generated.status, 0, generated.stderr)
     const manifest = JSON.parse(await readFile(resolve(dir, 'packages/test-ui-plugin/package.json'), 'utf8'))
-    assert.equal(manifest.name, '@dsk/test-ui-plugin')
+    assert.equal(manifest.name, '@dshx/test-ui-plugin')
     assert.equal(manifest.exports['./client'].default, './lib/client.js')
     assert.equal(manifest.dsh?.client?.platform, 'web')
     const clientSource = await readFile(resolve(dir, 'packages/test-ui-plugin/src/client/index.tsx'), 'utf8')
@@ -116,6 +116,52 @@ test('generator refuses to create a package when official ids cannot be loaded',
     assert.notEqual(generated.status, 0)
     assert.match(generated.stderr, /Official DSH checkout not found|No official bundle patches/)
     await assert.rejects(readFile(resolve(dir, 'packages/test-feature/package.json'), 'utf8'))
+  } finally {
+    assert(dir.startsWith(resolve(tmpdir(), 'dsh-plugin-generator-')))
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('verify-packages catches invalid icon contracts and missing test scripts', async () => {
+  const verifyScript = resolve(import.meta.dirname, '../scripts/check/verify-packages.mjs')
+  const { dir, harness } = await fixtureRoot()
+  try {
+    // Scaffold valid package
+    const generated = run(dir, harness, 'check-target')
+    assert.equal(generated.status, 0)
+    const pkgDir = resolve(dir, 'packages/check-target')
+    await mkdir(resolve(pkgDir, 'lib'), { recursive: true })
+    await writeFile(resolve(pkgDir, 'lib/index.js'), 'export {}\n')
+    await writeFile(resolve(pkgDir, 'lib/index.d.ts'), 'export {}\n')
+    const pkgJsonPath = resolve(pkgDir, 'package.json')
+    const raw = JSON.parse(await readFile(pkgJsonPath, 'utf8'))
+
+    // 1. Missing test script fails verification
+    delete raw.scripts.test
+    await writeFile(pkgJsonPath, JSON.stringify(raw, null, 2))
+    let res = spawnSync(process.execPath, [verifyScript], { cwd: dir, encoding: 'utf8', env: { ...process.env, DSH_PLUGIN_ROOT: dir } })
+    assert.notEqual(res.status, 0)
+    assert.match(res.stderr, /must declare a "test" script/)
+
+    // Restore test script
+    raw.scripts.test = 'node --test'
+
+    // 2. Icon missing export fails verification
+    raw.icon = './icon.png'
+    raw.files = ['lib', 'cordis.patch.yml', 'icon.png']
+    await writeFile(resolve(dir, 'packages/check-target/icon.png'), Buffer.alloc(10))
+    await writeFile(pkgJsonPath, JSON.stringify(raw, null, 2))
+    res = spawnSync(process.execPath, [verifyScript], { cwd: dir, encoding: 'utf8', env: { ...process.env, DSH_PLUGIN_ROOT: dir } })
+    assert.notEqual(res.status, 0)
+    assert.match(res.stderr, /must explicitly export the icon/)
+
+    // 3. Icon exceeding size limit fails verification
+    raw.exports['./icon.png'] = './icon.png'
+    await writeFile(resolve(dir, 'packages/check-target/icon.png'), Buffer.alloc(300 * 1024))
+    await writeFile(pkgJsonPath, JSON.stringify(raw, null, 2))
+    res = spawnSync(process.execPath, [verifyScript], { cwd: dir, encoding: 'utf8', env: { ...process.env, DSH_PLUGIN_ROOT: dir } })
+    assert.notEqual(res.status, 0)
+    assert.match(res.stderr, /exceeds 256 KiB limit/)
   } finally {
     assert(dir.startsWith(resolve(tmpdir(), 'dsh-plugin-generator-')))
     await rm(dir, { recursive: true, force: true })

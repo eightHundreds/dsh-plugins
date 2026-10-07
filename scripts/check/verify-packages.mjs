@@ -4,7 +4,9 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { load } from 'js-yaml'
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+const root = process.env.DSH_PLUGIN_ROOT
+  ? resolve(process.env.DSH_PLUGIN_ROOT)
+  : resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const packages = []
 for (const entry of await readdir(resolve(root, 'packages'), { withFileTypes: true })) {
   if (!entry.isDirectory()) continue
@@ -14,7 +16,7 @@ for (const entry of await readdir(resolve(root, 'packages'), { withFileTypes: tr
 }
 assert.equal(new Set(packages.map(({ pkg }) => pkg.name)).size, packages.length, 'duplicate package names')
 for (const { pkg, dir } of packages) {
-  assert(/^@dsk\/[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(pkg.name), 'package name must use @dsk/<kebab-name>: ' + pkg.name)
+  assert(/^@dshx\/[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(pkg.name), 'package name must use @dshx/<kebab-name>: ' + pkg.name)
   assert.equal(pkg.type, 'module')
   assert(pkg.dsh?.bundle?.patch, pkg.name + ': missing bundle metadata')
   const patch = pkg.dsh.bundle.patch
@@ -65,6 +67,34 @@ for (const { pkg, dir } of packages) {
     }
   }
   if ((await stat(sourceDir).catch(() => undefined))?.isDirectory()) await verifyCssModules(sourceDir)
+  // Check icon requirements when package declares an icon
+  if (pkg.icon) {
+    assert(typeof pkg.icon === 'string', `${pkg.name}: "icon" must be a string`)
+    assert(pkg.icon.startsWith('./') && !pkg.icon.includes('..'), `${pkg.name}: "icon" must be a package-relative path starting with "./": ${pkg.icon}`)
+    const extMatch = pkg.icon.match(/\.(svg|png|jpe?g|webp)$/i)
+    assert(extMatch, `${pkg.name}: "icon" format must be .svg, .png, .jpg, .jpeg, or .webp: ${pkg.icon}`)
+    const iconFilePath = resolve(dir, pkg.icon)
+    let iconStat
+    try {
+      iconStat = await stat(iconFilePath)
+    } catch {
+      assert.fail(`${pkg.name}: icon file does not exist at ${pkg.icon}`)
+    }
+    assert(iconStat.isFile(), `${pkg.name}: icon path is not a file: ${pkg.icon}`)
+    const MAX_ICON_BYTES = 256 * 1024
+    assert(iconStat.size <= MAX_ICON_BYTES, `${pkg.name}: icon file exceeds 256 KiB limit (${iconStat.size} > ${MAX_ICON_BYTES})`)
+    const exportedIcon = pkg.exports?.[pkg.icon]
+    const exportedPath = typeof exportedIcon === 'string' ? exportedIcon : exportedIcon?.default ?? exportedIcon?.import
+    assert.equal(exportedPath, pkg.icon, `${pkg.name}: "exports" must explicitly export the icon as "${pkg.icon}": "${pkg.icon}"`)
+    const relativeIconName = pkg.icon.slice(2)
+    assert(Array.isArray(pkg.files) && (pkg.files.includes(pkg.icon) || pkg.files.includes(relativeIconName)),
+      `${pkg.name}: "files" array must include icon file "${relativeIconName}"`)
+  }
+  // Check test script requirement: backend pure-logic packages must provide a test script unless opted out
+  const isPureBundle = pkg.name === '@dshx/starter-bundle'
+  if (!isPureBundle) {
+    assert(pkg.scripts?.test, `${pkg.name}: package must declare a "test" script`)
+  }
   // DSH's client-modules registry reads exports["./client"] as a plain relative
   // path: it accepts a string or an object with a string `default`, and rejects
   // the `import` condition other tooling uses. A rejected entry aborts startup.

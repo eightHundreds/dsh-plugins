@@ -1,5 +1,5 @@
 {
-  "name": "@dsk/plugins",
+  "name": "@dshx/plugins",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.28.2",
@@ -11,7 +11,7 @@
     "dev": "pnpm -r --parallel --if-present run dev",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm run build && pnpm -r --if-present run test && node --test tests/*.test.mjs",
-    "check": "pnpm run typecheck && pnpm run test && node scripts/check/verify-packages.mjs && node scripts/check/check-workflows.mjs",
+    "check": "node scripts/check/run-all.mjs",
     "verify:desktop": "node scripts/check/verify-desktop-install.mjs",
     "new:plugin": "node scripts/scaffold/new-plugin.mjs",
     "pack:all": "pnpm run check && pnpm -r pack --pack-destination ./artifacts && node scripts/release/verify-tarballs.mjs",

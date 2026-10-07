@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "LSP Language Server Infrastructure",
+    "description": "Unified LSP host and model code navigation tool offering definition jump, references, implementation, symbols, and hover docs."
+  }
+}

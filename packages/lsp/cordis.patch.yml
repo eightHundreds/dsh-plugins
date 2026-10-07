@@ -1,0 +1,3 @@
+- insert:
+    - id: dshx-lsp
+      name: '@dshx/lsp'

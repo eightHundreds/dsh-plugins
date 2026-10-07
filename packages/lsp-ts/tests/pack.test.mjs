@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { mkdtemp, mkdir, writeFile, realpath, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import Lsp, { LspError, LspProviderId } from '@deepseek-ai/dsh-lsp'
 import LocalFS from '@deepseek-ai/dsh-fs-local'
@@ -21,51 +22,85 @@ const request = (workspaceRoot, operation = 'hover', line = 0, character = 18) =
   workspaceRoot, filePath: 'shapes.ts', operation, position: { line, character },
 })
 
-test('missing executable loads, honors custom routes, cancels and unregisters', async () => {
+async function fixture() {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'dsk-lsp-ts-input-')))
+  await writeFile(join(root, 'shapes.ts'), 'export const shape = 1\n')
+  await writeFile(join(root, 'a.custom'), 'export const shape = 1\n')
+  return root
+}
+
+test('missing executable loads lazily, honors custom routes, cancels and unregisters', async () => {
+  const root = await fixture()
   const ctx = await base()
+  let resolutions = 0
+  const resolveExecutable = ctx.subprocess.resolveExecutable.bind(ctx.subprocess)
+  ctx.subprocess.resolveExecutable = (...args) => {
+    resolutions++
+    return resolveExecutable(...args)
+  }
   try {
     const fiber = ctx.plugin(Pack, { command: '/nonexistent/dsk-ts-server', extensionToLanguage: { '.custom': 'typescript' } })
     await fiber
-    await assert.rejects(ctx.lsp.query({ ...request(process.cwd()), filePath: 'a.custom' }), e => e instanceof LspError && e.code === 'LSP_UNAVAILABLE' && e.message.includes('/nonexistent/dsk-ts-server'))
+    assert.equal(resolutions, 0, 'loading must not resolve the executable')
+    await assert.rejects(ctx.lsp.query({ ...request(root), filePath: 'a.custom' }), e => e instanceof SubprocessExecutableNotFoundError && e.message.includes('/nonexistent/dsk-ts-server'))
     const reason = new Error('cancel')
-    await assert.rejects(ctx.lsp.query(request(process.cwd()), AbortSignal.abort(reason)), e => e === reason)
+    await assert.rejects(ctx.lsp.query(request(root), AbortSignal.abort(reason)), e => e === reason)
+    assert.equal(resolutions, 1, 'pre-aborted query must not resolve the executable')
     await fiber.dispose()
-    await assert.rejects(ctx.lsp.query(request(process.cwd())), e => e.code === 'LSP_UNAVAILABLE')
-  } finally { await ctx.fiber.dispose() }
+    await assert.rejects(ctx.lsp.query(request(root)), e => e instanceof LspError && e.code === 'LSP_UNAVAILABLE')
+  } finally {
+    await ctx.fiber.dispose()
+    await rm(root, { recursive: true, force: true })
+  }
 })
 
-test('official conflicts and invalid config remain errors', async () => {
+test('official provider conflicts remain errors', async () => {
   const ctx = await base()
   try {
     ctx.lsp.registerProvider({ id: LspProviderId('other'), extensionToLanguage: { '.ts': 'typescript' }, query: async () => { throw new Error('unused') } })
     await assert.rejects(Pack.apply(ctx, { command: process.execPath }), e => e.code === 'LSP_CONFLICT')
-    await assert.rejects(Pack.apply(ctx, { command: '/nonexistent/dsk-ts-server', shutdownTimeoutMs: 0 }), /positive integer/)
   } finally { await ctx.fiber.dispose() }
 })
 
-test('only typed executable misses degrade; transport failures propagate', async () => {
+test('config schema checks are isolated from provider registration', () => {
+  assert.throws(() => Pack.Config({ args: 'not-an-array' }), /args/)
+  assert.throws(() => Pack.Config({ env: { PATH: 123 } }), /PATH/)
+  const config = Pack.Config({ command: '/custom/tsc', args: ['--stdio'], shutdownTimeoutMs: 250 })
+  assert.deepEqual(Pack.resolveServerConfig(config).args, ['--stdio'])
+  assert.equal(Pack.resolveServerConfig(config).shutdownTimeoutMs, 250)
+})
+
+test('executable resolution failures propagate at query time and permit retry', async () => {
+  const root = await fixture()
   const ctx = await base()
   const original = ctx.subprocess.resolveExecutable
+  let resolutions = 0
+  const transportError = new Error('transport lost')
+  const missingError = new SubprocessExecutableNotFoundError('missing')
   try {
-    ctx.subprocess.resolveExecutable = async () => { throw new Error('transport lost') }
-    await assert.rejects(Pack.apply(ctx, {}), /transport lost/)
-    ctx.subprocess.resolveExecutable = async () => { throw new SubprocessExecutableNotFoundError('missing') }
-    await Pack.apply(ctx, {})
-    await assert.rejects(ctx.lsp.query(request(process.cwd())), e => e.code === 'LSP_UNAVAILABLE')
+    ctx.subprocess.resolveExecutable = async () => { resolutions++; throw transportError }
+    const fiber = ctx.plugin(Pack, {})
+    await fiber
+    assert.equal(resolutions, 0)
+    await assert.rejects(ctx.lsp.query(request(root)), e => e === transportError)
+    ctx.subprocess.resolveExecutable = async () => { resolutions++; throw missingError }
+    await assert.rejects(ctx.lsp.query(request(root)), e => e === missingError)
+    assert.equal(resolutions, 2, 'failed resolution must not poison the workspace cache')
   } finally {
     ctx.subprocess.resolveExecutable = original
     await ctx.fiber.dispose()
+    await rm(root, { recursive: true, force: true })
   }
 })
 
-test('real TS server: four operations, canonical sharing, two workspaces, disposal', { timeout: 120000 }, async () => {
+test('native tsc: four operations, canonical sharing, two workspaces, disposal', { timeout: 120000 }, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'dsk-lsp-ts-')))
   const ctx = await base()
   const handles = []
   const spawn = ctx.subprocess.spawn.bind(ctx.subprocess)
   ctx.subprocess.spawn = spec => {
     const handle = spawn(spec)
-    assert.deepEqual(spec.argv.slice(1), ['--stdio'])
+    assert.deepEqual(spec.argv.slice(1), ['--lsp', '--stdio'])
     handles.push(handle)
     return handle
   }
@@ -84,7 +119,7 @@ test('real TS server: four operations, canonical sharing, two workspaces, dispos
       await writeFile(join(root, ws, 'shapes.ts'), source)
     }
     await symlink(join(root, 'one'), join(root, 'alias'))
-    const fiber = ctx.plugin(Pack, { command: resolve('node_modules/.bin/typescript-language-server') })
+    const fiber = ctx.plugin(Pack, { command: fileURLToPath(new URL('../node_modules/typescript-native/bin/tsc', import.meta.url)) })
     await fiber
     assert.equal(handles.length, 0, 'load must not spawn')
     const one = join(root, 'one')
