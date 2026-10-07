@@ -3,7 +3,7 @@ import type { DocumentPreviewProps } from '@deepseek-ai/dsh-client-ui-sidebar-do
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { parseFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
-import { bindEditorLsp, editorModelUri, locationAddress, type QueryEditorLsp, type ResultsState } from './lsp.ts'
+import { bindEditorLsp, editorModelUri, fileUriPath, locationAddress, locationLabel, monacoRange, type QueryEditorLsp, type ResultsState } from './lsp.ts'
 import type {} from './locales.ts'
 import { monaco } from './monaco.ts'
 import { getLanguageForPath } from './languages.ts'
@@ -43,9 +43,10 @@ export function MonacoPreview({ content, resourceAddress, wrap, scrollportRef, u
       editor: instance, model, sessionId: file.sessionId as SessionId, filePath: file.path, signal: tab.signal,
       query: queryLsp, label: operation => live.current.t(operation), showResults: state => live.current.setResults(state),
       selectLocation: location => {
-        const target = new URL(location.uri)
-        if (target.protocol !== 'file:' || decodeURIComponent(target.pathname).replace(/^\/([A-Za-z]:\/)/, '$1') !== file.path) return false
-        const range = { startLineNumber: location.range.start.line + 1, startColumn: location.range.start.character + 1, endLineNumber: location.range.end.line + 1, endColumn: location.range.end.character + 1 }
+        let path: string
+        try { path = fileUriPath(location.uri) } catch { return false }
+        if (path !== file.path) return false
+        const range = monacoRange(location.range)
         instance.setSelection(range); instance.revealRangeInCenter(range); instance.focus(); return true
       },
       openLocation: (location, result) => live.current.actions.openResource(
@@ -100,17 +101,12 @@ export function MonacoPreview({ content, resourceAddress, wrap, scrollportRef, u
         {results.result.locations.length === 0 && <p role="status">{t('empty')}</p>}
         {results.result.truncated && <p role="status">{t('truncated')}</p>}
         <ul>{results.result.locations.map((location, index) => {
-          let label = location.uri
-          try { label = decodeURIComponent(new URL(location.uri).pathname) } catch { /* Preserve the URI for display. */ }
+          const label = locationLabel(location.uri)
           return <li key={location.uri + ':' + location.range.start.line + ':' + location.range.start.character + ':' + index}>
             <button type="button" title={label} onClick={() => {
-              const file = parseFileAddress(resourceAddress)
-              if (file?.scope !== 'session' || !results.result) return
-              try {
-                tab.actions.openResource(locationAddress(file.sessionId, location.uri, results.result.resolvedWorkspaceUri), { params: { line: location.range.start.line + 1 } })
-              } catch (error) {
-                setResults({ ...results, error: error instanceof Error ? error.message : String(error) })
-              }
+              if (!results.result) return
+              try { lsp.current?.open(location, results.result) }
+              catch (error) { setResults({ ...results, error: error instanceof Error ? error.message : String(error) }) }
             }}>{label}:{location.range.start.line + 1}</button>
           </li>
         })}</ul>

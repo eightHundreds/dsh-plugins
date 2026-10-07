@@ -21,15 +21,23 @@ export function monacoRange(range: LspRange): monaco.Range {
   return new monaco.Range(range.start.line + 1, range.start.character + 1, range.end.line + 1, range.end.character + 1)
 }
 
-/** LSP file URIs are Host paths; resolve them in the originating tab's Session, never the browser's filesystem. */
-export function locationAddress(sessionId: string, uri: string, workspaceUri: string): string {
+/** Decode a `file:` URI into the Host path spelling accepted by DSH. */
+export function fileUriPath(uri: string): string {
   const target = new URL(uri)
   if (target.protocol !== 'file:' || (target.hostname && target.hostname !== 'localhost')) throw new Error('Unsupported language service location')
-  const path = decodeURIComponent(target.pathname).replace(/^\/([A-Za-z]:\/)/, '$1')
-  const root = new URL(workspaceUri)
-  if (root.protocol !== 'file:') throw new Error('Unsupported workspace URI')
-  const cwd = decodeURIComponent(root.pathname).replace(/^\/([A-Za-z]:\/)/, '$1')
+  return decodeURIComponent(target.pathname).replace(/^\/([A-Za-z]:\/)/, '$1')
+}
+
+/** LSP file URIs are Host paths; resolve them in the originating tab's Session, never the browser's filesystem. */
+export function locationAddress(sessionId: string, uri: string, workspaceUri: string): string {
+  const path = fileUriPath(uri)
+  const cwd = fileUriPath(workspaceUri)
   return fileAddressFor(sessionId, cwd, path)
+}
+
+/** Prefer a readable Host path; malformed locations keep their original URI. */
+export function locationLabel(uri: string): string {
+  try { return fileUriPath(uri) } catch { return uri }
 }
 
 /** Each registration ignores every model except this instance's model, including duplicate previews of the same file. */
@@ -39,7 +47,7 @@ export function bindEditorLsp(options: {
   label: (operation: NavigationOperation) => string; showResults: (state: ResultsState | null) => void;
   openLocation: (location: LocationResult['locations'][number], result: LocationResult) => void;
   selectLocation: (location: LocationResult['locations'][number]) => boolean;
-}): { dispose(): void; cancelNavigation(): void } {
+}): { dispose(): void; cancelNavigation(): void; open(location: LocationResult['locations'][number], result: LocationResult): void } {
   const { editor, model, signal } = options
   let disposed = false
   let navigationRevision = 0
@@ -107,8 +115,7 @@ export function bindEditorLsp(options: {
           const result = await query(operation, position)
           if (disposed || revision !== navigationRevision || result?.kind !== 'locations') return
           if (operation !== 'findReferences' && result.locations.length === 1 && !result.truncated) {
-            const location = result.locations[0]!
-            if (!options.selectLocation(location)) options.openLocation(location, result)
+            open(result.locations[0]!, result)
             options.showResults(null)
           } else options.showResults({ operation, result })
         } catch (error) {
@@ -117,7 +124,11 @@ export function bindEditorLsp(options: {
       },
     })),
   ]
+  const open = (location: LocationResult['locations'][number], result: LocationResult): void => {
+    if (!options.selectLocation(location)) options.openLocation(location, result)
+  }
   return {
+    open,
     cancelNavigation() { navigationRevision++; for (const operation of navigationOperations) pending.get(operation)?.abort() },
     dispose() { disposed = true; navigationRevision++; cancelAll(); change.dispose(); signal.removeEventListener('abort', onAbort); for (const registration of registrations) registration.dispose() },
   }

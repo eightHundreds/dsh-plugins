@@ -46,7 +46,7 @@ export function apply(ctx: Context): void {
     mounting = true
     const disposeRemote = await ctx.remote.$mount(editorLspContribution)
     const body = ctx.inject(['remote.vscodeEditorLsp'], scope => {
-      const queryLsp = (sessionId: Parameters<typeof scope.remote.vscodeEditorLsp.query>[0], request: Parameters<typeof scope.remote.vscodeEditorLsp.query>[1], signal?: AbortSignal) => scope.remote.vscodeEditorLsp.query(sessionId, request, signal)
+      const queryLsp = scope.remote.vscodeEditorLsp.query.bind(scope.remote.vscodeEditorLsp)
       scope.effect(() => scope.slots.inject('sidebar.right.tab.document', () => scope.slots.register(
         { name: 'sidebar.right.tab.document', key: ID, locale: NS }, props => <MonacoPreview {...props} queryLsp={queryLsp} />,
       )), 'vscode-editor: preview body')
