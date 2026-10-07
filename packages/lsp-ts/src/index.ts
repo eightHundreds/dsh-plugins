@@ -82,7 +82,7 @@ export interface Config {
 
 export const Config: z<Config> = z.object({
   command: z.string(),
-  args: z.array(String),
+  args: z.array(String).default([...DEFAULT_ARGS]),
   env: z.dict(String),
   extensionToLanguage: z.dict(String),
   initializationOptions: z.any(),
