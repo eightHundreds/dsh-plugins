@@ -1,0 +1,9 @@
+# Host integration. Tools and guidance register on each Agent's own scope,
+# shadowing its preset without changing the preset's filesystem suite.
+- insert:
+    - id: dshx-tool-edit
+      name: '@dshx/tool-edit'
+      config:
+        mode: auto
+        diagnosticsOnEdit: true
+        diagnosticsDeduplicate: true

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "智能代码编辑工具",
+    "description": "增强型代码编辑工具（支持 replace、patch、apply_patch 与 hashline 精确行锚定），编辑后自动联动 LSP 诊断以校验语法与类型错误。"
+  }
+}

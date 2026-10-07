@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Rich Code Edit Tool",
+    "description": "Enhanced code editing tool (replace, patch, apply_patch, and hashline line anchoring) with automatic post-edit LSP diagnostics."
+  }
+}
