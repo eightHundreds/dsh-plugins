@@ -21,9 +21,10 @@
     "locale"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json --watch",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test tests/*.test.mjs",
     "prepack": "pnpm run build"
   },
   "keywords": [
@@ -38,7 +39,9 @@
     "@deepseek-ai/cordis": "^4.0.4"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "4.0.4"
+    "@deepseek-ai/cordis": "4.0.4",
+    "tsdown": "^0.22.2",
+    "typescript": "5.9.3"
   },
   "dsh": {
     "bundle": {
