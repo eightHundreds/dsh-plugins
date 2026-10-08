@@ -1,6 +1,6 @@
 {
   "name": "@dshx/lsp-ts",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "TypeScript language pack over the @dshx/lsp host and stdio provider.",
   "type": "module",
   "license": "MIT",
