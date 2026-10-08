@@ -1,15 +1,21 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { mkdtemp, mkdir, writeFile, realpath, rm, symlink } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, writeFile, realpath, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
-import Lsp, { LspError, LspProviderId } from '@deepseek-ai/dsh-lsp'
+import { Lsp, LspError, LspProviderId } from '@dshx/lsp'
 import LocalFS from '@deepseek-ai/dsh-fs-local'
 import LocalSubprocess from '@deepseek-ai/dsh-subprocess-local'
 import { SubprocessExecutableNotFoundError } from '@deepseek-ai/dsh-subprocess'
 import * as Pack from '../lib/index.js'
+
+test('compiled pack imports @dshx/lsp and not official Desktop-absent LSP packages', async () => {
+  const source = await readFile(new URL('../lib/index.js', import.meta.url), 'utf8')
+  assert.match(source, /from "@dshx\/lsp"/)
+  assert.doesNotMatch(source, /@deepseek-ai\/dsh-lsp/)
+})
 
 async function base() {
   const ctx = new Context()

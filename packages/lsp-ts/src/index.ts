@@ -2,18 +2,21 @@
 /**
  * dsh-lsp-ts — TypeScript / JavaScript language configuration pack for DeepSeek Harness.
  *
- * One language pack = one npm package that registers a configured
- * `@deepseek-ai/dsh-lsp-stdio` instance on `ctx.lsp`. The pack ships the
- * server command, launch arguments, and the extension → language-id table
- * for its language; the deployment composes the shared LSP base once (the
- * `lsp` service, the `lsp` tool, and a filesystem/subprocess pair for the
- * same execution world) and every language pack reuses it unchanged.
+ * One language pack = one npm package that registers a configured stdio
+ * server on `ctx.lsp` via `@dshx/lsp`. The pack ships the server command,
+ * launch arguments, and the extension → language-id table for its language;
+ * the deployment composes the shared LSP base once (the `lsp` service, the
+ * `lsp` tool, and a filesystem/subprocess pair for the same execution world)
+ * and every language pack reuses it unchanged.
  *
- * The server is NOT launched at load: `lsp-stdio` starts processes lazily on
+ * The server is NOT launched at load: `@dshx/lsp` starts processes lazily on
  * the first matching query. When the server executable cannot be resolved,
  * the pack still loads and every query fails with a structured
  * `LSP_UNAVAILABLE` error naming the missing command, so the rest of the
  * session keeps working.
+ *
+ * Desktop does not ship `@deepseek-ai/dsh-lsp` / `dsh-lsp-stdio`. This pack
+ * therefore depends only on `@dshx/lsp` for types, errors, and registration.
  *
  * Namespace plugin (named exports, no default export).
  * @module @dshx/lsp-ts
@@ -22,10 +25,17 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { SubprocessExecutableNotFoundError } from '@deepseek-ai/dsh-subprocess'
-import { LspError, LspProviderId } from '@deepseek-ai/dsh-lsp'
-import type { LspProvider, LspProviderQuery, LspQueryResult } from '@deepseek-ai/dsh-lsp'
-import * as LspStdio from '@deepseek-ai/dsh-lsp-stdio'
-import type { LspLocalServerConfig } from '@deepseek-ai/dsh-lsp-stdio'
+import {
+  LspError,
+  LspProviderId,
+  registerLanguageServer,
+} from '@dshx/lsp'
+import type {
+  LocalServerConfig,
+  LspProvider,
+  LspProviderQuery,
+  LspQueryResult,
+} from '@dshx/lsp'
 
 /** Cordis plugin name for loader diagnostics. */
 export const name = 'lsp-ts'
@@ -98,7 +108,7 @@ export const Config: z<Config> = z.object({
  * The server entry this pack always fills completely: `command`, `args`, and
  * `extensionToLanguage` are guaranteed present (defaults or user overrides).
  */
-export type ResolvedServerConfig = LspLocalServerConfig & {
+export type ResolvedServerConfig = LocalServerConfig & {
   command: string
   args: string[]
   extensionToLanguage: Record<string, string>
@@ -151,12 +161,10 @@ function failureMessage(error: unknown): string {
  * no-server fallback when the executable cannot be resolved at load.
  *
  * A missing executable disables this language routing and surfaces
- * `LSP_UNAVAILABLE` on queries. Other setup errors retain official behavior.
+ * `LSP_UNAVAILABLE` on queries. Other setup errors retain shared-base behavior.
  * @param ctx - the plugin context (must inject `fs`, `lsp`, `subprocess`).
  * @param config - the resolved pack configuration.
  */
-import { registerLanguageServer } from '@dshx/lsp'
-
 export async function apply(ctx: Context, config: Config): Promise<void> {
   const server = resolveServerConfig(config)
   try {

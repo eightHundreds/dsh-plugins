@@ -9,5 +9,5 @@ export default {
   fixedExtension: false,
   dts: true,
   clean: true,
-  deps: { neverBundle: [/^@deepseek-ai\//] },
+  deps: { neverBundle: [/^@deepseek-ai\//, /^@dshx\//] },
 } satisfies UserConfig
