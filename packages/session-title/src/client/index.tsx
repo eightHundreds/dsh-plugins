@@ -35,7 +35,7 @@ import { LOCALE_NS, zh, en } from './locales';
 import { LOG } from './log';
 import { injectStyle, removeStyle, PAIR_STYLE_ID, PAIR_CSS, ICONBTN_STYLE_ID, ICONBTN_CSS } from './style';
 
-export const name = '@dsk/session-title';
+export const name = '@dshx/session-title';
 
 /**
  * 会话头部的动作区。cardinality 为 list，注册新 id 即增量追加，不会覆盖内置项。
@@ -614,6 +614,7 @@ export function apply(ctx: Context): void {
     const model = new SettingsFormModel<PluginConfig>(
       sub.configForms.get<PluginConfig>(LOCALE_NS),
       [
+        settingsTextField('language'),
         settingsNumberField('retitleEvery'),
         settingsTextField('provider'),
         settingsTextField('model'),
@@ -625,6 +626,7 @@ export function apply(ctx: Context): void {
     /** 卡片级状态 + 六个字段的控件态，一次投影全量发布。 */
     const store = model.bind<PanelState>(() => ({
       ...model.shell(),
+      language: model.field('language'),
       retitleEvery: model.field('retitleEvery'),
       provider: model.field('provider'),
       model: model.field('model'),

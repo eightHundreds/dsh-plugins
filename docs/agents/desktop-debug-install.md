@@ -22,7 +22,7 @@
 当用户要求将本仓库中的插件安装到 DSH Desktop 时，执行以下标准流程：
 
 ### 步骤 1：在本仓库安装插件依赖
-在仓库根目录执行 `pnpm install`（或 `pnpm --filter @dsk/<插件名> install`）。确认插件声明的 `dependencies` 能从 `packages/<插件名>` 解析到，而不是只存在于 Desktop profile 的 `node_modules`。
+在仓库根目录执行 `pnpm install`（或 `pnpm --filter @dshx/<插件名> install`）。确认插件声明的 `dependencies` 能从 `packages/<插件名>` 解析到，而不是只存在于 Desktop profile 的 `node_modules`。
 
 ### 步骤 2：以 `link:` 协议更新依赖
 修改 `~/.dsh/profiles/desktop/package.json`：
@@ -30,7 +30,7 @@
    ```json
    {
      "dependencies": {
-       "@dsk/<插件名>": "link:<dsh-plugins 仓库根目录绝对路径>/packages/<插件名>"
+       "@dshx/<插件名>": "link:<dsh-plugins 仓库根目录绝对路径>/packages/<插件名>"
      }
    }
    ```
@@ -41,7 +41,7 @@
        "profile": {
          "bundles": [
            ...,
-           "@dsk/<插件名>"
+           "@dshx/<插件名>"
          ]
        }
      }
@@ -64,19 +64,28 @@
 
 检查包的 `dsh.bundle.patch` 指向的补丁文件。DSH 按 `dsh.profile.bundles` 顺序应用 bundle 补丁，最后应用 profile 补丁。插件自带的冲突禁用规则已参与组合，无需在 profile 中重复；检查后续覆盖是否重新启用了冲突服务。
 
-新增运行时行使用 `insert`，并在插入的行中提供 `name: '@dsk/<插件名>'`。对已有行使用 `id` 覆盖；覆盖中的 `name` 是匹配条件，不会补写或替换运行时包名。模块导出的 `name` 是插件标识，不要求等于包名。
+新增运行时行使用 `insert`，并在插入的行中提供 `name: '@dshx/<插件名>'`。对已有行使用 `id` 覆盖；覆盖中的 `name` 是匹配条件，不会补写或替换运行时包名。模块导出的 `name` 是插件标识，不要求等于包名。
 
-### 步骤 5：运行静态安装检查（必须执行）
+### 步骤 5：配置插件展示元数据与图标（可选但推荐）
+
+DSH Desktop / Web 插件管理页面通过核心 `readPluginMeta` 解析插件名称、描述和图标。该机制**不读取 `dsh.plugin.json`**，而是通过 Node ESM 资源解析器读取 `package.json`：
+
+1. **声明字段**：必须在插件自身 `package.json` 根字段提供 `"icon": "./icon.png"`（必须是相对路径）。
+2. **导出文件**：`package.json` 的 `exports` 必须显式导出该图标文件，例如 `"./icon.png": "./icon.png"`。缺少导出时 ESM 解析器会抛出 `ERR_PACKAGE_PATH_NOT_EXPORTED`，导致图标静默回退为空。
+3. **格式与大小限制**：仅支持 `.svg`、`.png`、`.jpg`、`.jpeg`、`.webp`；文件真实体积必须严格 `<= 256 KiB`（超过会抛错并在元数据中记录 error）。
+4. **打包清单**：`package.json` 的 `files` 数组必须包含该图标文件（如 `"icon.png"`），确保打包交付时不丢失。
+
+### 步骤 6：运行静态安装检查（必须执行）
 
 完成配置及构建后，在仓库根目录运行：
 
 ```bash
-# 检查指定插件（也可使用 @dsk/session-title）
+# 检查指定插件（也可使用 @dshx/session-title）
 pnpm verify:desktop session-title
 # 或直接运行脚本
 node scripts/check/verify-desktop-install.mjs session-title
 
-# 检查全部已声明或选择的 @dsk/* 插件
+# 检查全部已声明或选择的 @dshx/* 插件
 pnpm verify:desktop
 # 或
 node scripts/check/verify-desktop-install.mjs
@@ -85,15 +94,15 @@ node scripts/check/verify-desktop-install.mjs
 DSH_HOME=/path/to/dsh-home pnpm verify:desktop session-title
 ```
 
-不传插件名时检查 profile 中声明或选择的全部 `@dsk/*` 插件。默认使用 `~/.dsh/profiles/desktop`；设置 `DSH_HOME` 时使用该目录下的 `profiles/desktop`。
+不传插件名时检查 profile 中声明或选择的全部 `@dshx/*` 插件。默认使用 `~/.dsh/profiles/desktop`；设置 `DSH_HOME` 时使用该目录下的 `profiles/desktop`。
 
 脚本检查绝对路径 `link:` 声明、实际 `node_modules` 软链接目标、bundle 选择、profile 中 HMR 启用状态与 `lib/` 路径、Host/Client 运行时导出文件、bundle 补丁解析，以及 profile 对本插件冲突禁用规则的显式反转。失败返回非零退出码；修复失败项后重新运行至通过。
 
 通过只表示这些静态条件成立。脚本不组合其他 bundle、嵌套 include 或启动器覆盖，也不验证 peer 兼容性、Host 激活、Client 注册、UI 渲染或 HMR 事件。
 
-### 步骤 6：验证 Desktop 实际行为（必须执行）
+### 步骤 7：验证 Desktop 实际行为（必须执行）
 
-在 Desktop 中触发插件功能并确认结果；带配置 UI 的插件须打开对应页面确认控件渲染。要声称 HMR 生效，必须观察一次构建后的重载日志或可辨认的行为变化。记录验证方式与结果；无法访问 Desktop 时，报告“静态检查通过，运行时未验证”。
+在 Desktop 中触发插件功能并确认结果；带配置 UI 的插件须打开对应页面确认控件渲染；配置了图标的插件可在设置/插件管理面板检查图标是否正确显示。要声称 HMR 生效，必须观察一次构建后的重载日志或可辨认的行为变化。记录验证方式与结果；无法访问 Desktop 时，报告“静态检查通过，运行时未验证”。
 
 ---
 
@@ -101,4 +110,4 @@ DSH_HOME=/path/to/dsh-home pnpm verify:desktop session-title
 配置完成后：
 1. 插件 `dependencies` 有变动时，先在本仓库重新 `pnpm install`，再构建。
 2. 在本仓库对应插件目录执行构建或监听构建（如 `pnpm build` 或 `tsdown --watch`）。
-3. 构建更新 `packages/<插件名>/lib/` 后，按步骤 6 观察 Desktop 的重载结果。新安装或修改监听配置后，若当前进程未加载新配置，重新启动 Desktop 再验证。
+3. 构建更新 `packages/<插件名>/lib/` 后，按步骤 7 观察 Desktop 的重载结果。新安装或修改监听配置后，若当前进程未加载新配置，重新启动 Desktop 再验证。

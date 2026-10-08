@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "TypeScript 语言服务扩展",
+    "description": "基于 TypeScript 7 原生 LSP 与官方 stdio 进程池，为 TS / JS 提供开箱即用的跳转、查找引用与悬停提示。"
+  }
+}

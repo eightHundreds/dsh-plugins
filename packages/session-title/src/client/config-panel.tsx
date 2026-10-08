@@ -21,7 +21,7 @@
  *   包一层：`save` 动作 resolve 后按结果弹（连存两次按 seq 重启淡出周期）。
  */
 import { useRef, useState } from 'react';
-import { SettingsForm, SettingsValueField, Toast } from '@deepseek-ai/dsh-client-ui-primitives';
+import { SettingsForm, SettingsValueField, Toast, Menu } from '@deepseek-ai/dsh-client-ui-primitives';
 import type { SettingsFormShell, SettingsFieldState } from '@deepseek-ai/dsh-client-ui-primitives';
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots';
 
@@ -37,6 +37,7 @@ import type { DirectoryState } from './model-pair';
  * 稀疏的，字段缺省交由 `SettingsFormModel` 处理。
  */
 export interface PluginConfig {
+  language?: 'zh' | 'en';
   retitleEvery?: number;
   provider?: string;
   model?: string;
@@ -48,6 +49,7 @@ export interface PluginConfig {
 
 /** 表单投影：卡片级状态 + 六个字段的控件态，一次 `usePanel()` 全拿。 */
 export interface PanelState extends SettingsFormShell {
+  language: SettingsFieldState;
   retitleEvery: SettingsFieldState;
   provider: SettingsFieldState;
   model: SettingsFieldState;
@@ -119,6 +121,7 @@ const FIELDS_BOTTOM_ROW: readonly FieldView[] = [
 ];
 
 export function ConfigPanel({ view, usePanel, useDirectory, save, edit, resetField, discard, t }: ConfigPanelProps) {
+  const [languageOpen, setLanguageOpen] = useState(false);
   const state = usePanel((s) => s);
   const directory = useDirectory((s) => s);
   // 保存成功的轻提示：按 seq 计数发新的一条，连存两次也能重启淡出周期，
@@ -191,6 +194,30 @@ export function ConfigPanel({ view, usePanel, useDirectory, save, edit, resetFie
         onSave={handleSave}
         onDiscard={discard}
       >
+        <div className="stp-pairField">
+          <div className="stp-pairHead">
+            <span className="stp-pairLabel">{t('languageLabel')}</span>
+            <span className="stp-badges">
+              {state.language.overridden ? <span className="stp-overridden">{t('overridden')}</span> : null}
+              <button type="button" className="stp-reset" disabled={!state.writable || !state.language.overridden}
+                onClick={() => resetField('language')}>{t('reset')}</button>
+            </span>
+          </div>
+          <Menu
+            open={languageOpen}
+            anchor={<button type="button" className="stp-combo" disabled={!state.writable}
+              aria-label={t('languageLabel')} aria-expanded={languageOpen}
+              onClick={() => setLanguageOpen(!languageOpen)}>
+              <span>{state.language.text === 'en' ? 'English (en)' : '中文 (zh)'}</span>
+              <span aria-hidden="true">▾</span>
+            </button>}
+            items={[{ id: 'zh', label: '中文 (zh)' }, { id: 'en', label: 'English (en)' }]}
+            selectedId={state.language.text || 'zh'}
+            onSelect={(id) => { edit('language', id); setLanguageOpen(false); }}
+            onClose={() => setLanguageOpen(false)}
+          />
+          <p className="stp-hint">{t('languageHint')}</p>
+        </div>
         {FIELDS_BEFORE_PAIR.map(renderField)}
         <ModelPairFields
           directory={directory}

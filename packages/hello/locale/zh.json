@@ -1,1 +1,1 @@
-{"meta":{"title":"Hello 示例","description":"演示 host 插件加载与卸载清理。"}}
+{"meta":{"title":"插件生命周期示例","description":"演示 DSH Host 插件的加载、资源注册与卸载清理。"}}

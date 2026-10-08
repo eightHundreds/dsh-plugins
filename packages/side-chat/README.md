@@ -1,4 +1,4 @@
-# @dsk/side-chat
+# @dshx/side-chat
 
 DSH 右侧边栏侧聊：在已完成回复的操作栏点击分支图标按钮，继承截至该轮 `turn/end` 的上下文，在 DSH 原生右侧边栏（`sidebar.right.pane.tab`）以独立 Tab 呈现侧聊，主会话不导航。
 
@@ -23,14 +23,14 @@ DSH 右侧边栏侧聊：在已完成回复的操作栏点击分支图标按钮�
 Node 24 / pnpm 11。按仓库规范使用 tsdown；Client 输出平台 factory closure，非独立 ESM 页面。
 
 ```sh
-pnpm --filter @dsk/side-chat typecheck
-pnpm --filter @dsk/side-chat build
-pnpm --filter @dsk/side-chat test
+pnpm --filter @dshx/side-chat typecheck
+pnpm --filter @dshx/side-chat build
+pnpm --filter @dshx/side-chat test
 ```
 
 ## Desktop 本地安装
 
-遵循仓库 [Desktop 调试安装规范](../../docs/agents/desktop-debug-install.md)：以本目录的 `link:` 安装，bundle 添加 `@dsk/side-chat`，HMR root 添加本包 `lib` 绝对路径；初始发现可能需要刷新/重启。此插件使用已发布公共 API，可安装到匹配的 rc.2 Desktop。
+遵循仓库 [Desktop 调试安装规范](../../docs/agents/desktop-debug-install.md)：以本目录的 `link:` 安装，bundle 添加 `@dshx/side-chat`，HMR root 添加本包 `lib` 绝对路径；初始发现可能需要刷新/重启。此插件使用已发布公共 API，可安装到匹配的 rc.2 Desktop。
 
 ## 验证
 

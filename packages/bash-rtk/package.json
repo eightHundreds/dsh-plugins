@@ -1,7 +1,8 @@
 {
-  "name": "@dsk/bash-rtk",
+  "name": "@dshx/bash-rtk",
   "description": "RTK-aware sandbox bash executor using the official DeepSeek Harness public SDK, without core modifications.",
   "version": "0.2.0",
+  "icon": "./icon.png",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -15,12 +16,16 @@
       "default": "./lib/wrap.js"
     },
     "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./icon.png": "./icon.png",
     "./package.json": "./package.json"
   },
   "files": [
     "lib",
     "cordis.patch.yml",
+    "locale",
     "dsh.plugin.json",
+    "icon.png",
     "LICENSE",
     "UPSTREAM.md",
     "README.zh.md"

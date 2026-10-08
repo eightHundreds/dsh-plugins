@@ -1,7 +1,7 @@
 /**
  * RTK-aware bash executor using only the published sandbox executor contract.
  * The official executor still owns configuration, confinement and processes.
- * @module @dsk/bash-rtk
+ * @module @dshx/bash-rtk
  */
 
 import { spawnSync } from 'node:child_process'

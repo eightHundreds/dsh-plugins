@@ -1,4 +1,4 @@
-# @dsk/bash-rtk
+# @dshx/bash-rtk
 
 适配**未修改的官方 DSH** 的 RTK 沙箱 bash 执行器插件。只使用公开 SDK，不需要修改 DSH 核心、重新打包 Desktop 或安装定制 runtime。来源见 [UPSTREAM.md](<./UPSTREAM.md>)；[English](<./README.md>)。
 
@@ -31,7 +31,7 @@
   disabled: true
 - insert:
     - id: bash-rtk
-      name: '@dsk/bash-rtk'
+      name: '@dshx/bash-rtk'
       disabled: false
       config:
         probeTimeoutMs: 2000
@@ -58,7 +58,7 @@
 
 ```sh
 pnpm install
-pnpm --filter @dsk/bash-rtk check
+pnpm --filter @dshx/bash-rtk check
 pnpm pack:all
 ```
 

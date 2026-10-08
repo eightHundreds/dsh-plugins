@@ -11,12 +11,14 @@
  */
 import type {} from '@deepseek-ai/dsh-client-locale/client';
 
-/** 词典命名空间。与设置命名空间同名，便于一眼对上。 */
-export const LOCALE_NS = 'session-title-pattern';
+/** 词典命名空间。与设置命名空间同名（等于 patch 中的 entry id），便于一眼对上。 */
+export const LOCALE_NS = 'dshx-session-title';
 
 /** 本插件渲染的全部文案键。 */
 export type SessionTitlePatternLocaleKey =
   // 配置表单（插件详情页）
+  | 'languageLabel'
+  | 'languageHint'
   | 'retitleEveryLabel'
   | 'retitleEveryHint'
   | 'modelPairLabel'
@@ -60,12 +62,14 @@ export type SessionTitlePatternLocaleKey =
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
-    'session-title-pattern': SessionTitlePatternLocaleKey;
+    'dshx-session-title': SessionTitlePatternLocaleKey;
   }
 }
 
 /** 简体中文词典。 */
 export const zh: Record<SessionTitlePatternLocaleKey, string> = {
+  languageLabel: '生成语言',
+  languageHint: '固定类型、主题和主线摘要的生成语言。保存后下次生成生效，默认中文。',
   retitleEveryLabel: '每隔几条对话重算一次',
   retitleEveryHint:
     '0 = 只在新建会话时算一次，之后不自动更新（可随时点标题旁的按钮手动重算）',
@@ -113,6 +117,8 @@ export const zh: Record<SessionTitlePatternLocaleKey, string> = {
 
 /** English dictionary. */
 export const en: Record<SessionTitlePatternLocaleKey, string> = {
+  languageLabel: 'Generation language',
+  languageHint: 'Fixed language for the type, topic and main line. Applies to the next generation after saving; defaults to Chinese.',
   retitleEveryLabel: 'Recompute every N messages',
   retitleEveryHint:
     '0 = compute once when the session is created and never again automatically ' +

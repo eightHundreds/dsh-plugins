@@ -12,14 +12,13 @@ import type {
 import type {} from '@deepseek-ai/dsh-commands';
 import type {} from '@deepseek-ai/dsh-llm';
 import type { SessionEvent } from '@deepseek-ai/dsh-session';
-import type {} from '@deepseek-ai/dsh-settings';
 
-import { callTitleModel, detectMessageLang, parseTitleOutput, toSummary } from './llm';
+import { callTitleModel, parseTitleOutput, toSummary } from './llm';
 import type { LlmService, TypeLang } from './llm';
 import { DEFAULT_TITLE_TEMPLATE, buildFallbackTitle, composeTitle } from './rules';
 import { foldSessionTitle, normalizeSessionTitle } from '@deepseek-ai/dsh-session-title';
 
-export const name = '@dsk/session-title';
+export const name = '@dshx/session-title';
 
 /**
  * 必须声明为数组。cordis 的 `Inject` 是 `(keyof M)[] | { [服务名]: 配置 }`，
@@ -31,9 +30,9 @@ export const name = '@dsk/session-title';
 export const inject = ['sessionTitle'] as const;
 
 /**
- * 设置命名空间：`session-title-pattern`（与本包名一致）。
- * dsh 0.1.7 起由 settings 服务按 entry 自动登记（旧 installSection 已删除），
- * 客户端用同一个字面量（`src/client/locales.ts` 的 LOCALE_NS / SETTINGS_NS）
+ * 设置命名空间：由 patch 的 entry id 决定（本包为 `dshx-session-title`）。
+ * dsh 0.1.7 起由 settings 服务按 entry id 自动登记（旧 installSection 已删除），
+ * 客户端用同一个字面量（`src/client/locales.ts` 的 LOCALE_NS）
  * 注册 `plugins.bundle.config` 槽位并读写同一命名空间。
  */
 
@@ -85,6 +84,8 @@ export interface Config {
    * 语法与示例见 `./rules` 的 `formatTitle()`。
    */
   template: string;
+  /** 生成内容的固定语言，控制类型、主题与主线。 */
+  language: TypeLang;
   /**
    * 标题总长度上限（UTF-8 字节）。
    *
@@ -125,10 +126,11 @@ type VolatileConfig = { readonly [K in keyof Config]: { readonly get: () => Conf
  * 只有它变化时才该清空滚动摘要（`generate()` 入口处比较）：配置现在是热更新的
  * （volatile 字段由宿主原位刷新），没有 installSection 的 onChange 回调可挂，
  * 所以改在每次 provider 调用入口检测——语义与旧 onChange 一致：只看影响标题
- * 生成的六个字段，模板 / 长度上限这类「只影响渲染」的改动不清摘要。
+ * 生成的字段，模板 / 长度上限这类「只影响渲染」的改动不清摘要。
  */
 function titleStateSignature(config: Config): string {
   return [
+    config.language,
     config.retitleEvery,
     config.provider,
     config.model,
@@ -140,7 +142,7 @@ function titleStateSignature(config: Config): string {
 
 /**
  * 设置 schema。**刻意不带 `z<Config>` 类型标注**：`.volatile()` 会改变 schema 的
- * 推导类型，带上标注反而 TS2322；字段与 `Config` 接口的一致性由人工对齐（8 个字段）。
+ * 推导类型，带上标注反而 TS2322；字段与 `Config` 接口的一致性由人工对齐（9 个字段）。
  *
  * **每个字段都标 `.volatile()`**（依赖 `@deepseek-ai/schemastery ^3.18.4`）：字段不落
  * 用户设置文档的持久层之外还由宿主原位热更新——保存后无需重载 entry，滚动摘要
@@ -151,6 +153,7 @@ function titleStateSignature(config: Config): string {
  * 的既有降级），初始时打一条 warn 提醒。
  */
 export const Config = z.object({
+  language: z.union(['zh', 'en'] as const).default('zh').volatile(),
   template: z.string().default(DEFAULT_TITLE_TEMPLATE).volatile(),
   maxBytes: z.number().step(1).min(20).default(80).volatile(),
   // min(0)：0 = 不自动重算，只在首条消息时生成一次。
@@ -276,7 +279,7 @@ class SessionTitlePatternProvider implements SessionTitleProvider {
     private readonly states: Map<string, SessionState>,
     /** 延迟注入的 llm 服务；未就绪时返回 undefined。 */
     private readonly getLlm: () => LlmService | undefined,
-    /** 本次该用哪种语言的类型标签（语言环境优先，拿不到才看对话语言）。 */
+    /** 本次生成内容使用的固定语言。 */
     private readonly resolveTypeLang: (messages: readonly SessionTitleUserMessage[]) => TypeLang,
     ) {
     // 初始签名：generate() 入口处与之比较，变化即清滚动摘要。
@@ -369,8 +372,7 @@ class SessionTitlePatternProvider implements SessionTitleProvider {
       }
     }
 
-    // 类型语言：**用户的语言环境**优先（中文环境下即便对话是英文，类型也用中文）；
-    // 读不到语言环境才退回按对话语言判断。
+    // 类型、主题和主线统一使用插件配置的语言。
     const typeLang = this.resolveTypeLang(request.messages);
     if (state.lang !== undefined && state.lang !== typeLang) {
       // 语言环境换过：摘要里那个类型是另一种语言，清掉，别让它把这一轮的类型语言带偏
@@ -579,6 +581,10 @@ function registerPanelCommands(
               signal,
             };
             const typeLang = resolveTypeLang(messages);
+            if (scratch.lang !== typeLang) {
+              scratch.summary = '';
+              scratch.seenCount = 0;
+            }
             const { text } = await callTitleModel(llm, config, request, scratch, typeLang);
             const parsed = parseTitleOutput(text, typeLang);
             return {
@@ -756,6 +762,7 @@ export function apply(ctx: Context, config: VolatileConfig): void {
   // setSource 换源，也不需要重载 entry（滚动摘要因此不会因改配置而丢）。
   const currentConfig = (): Config => ({
     template: config.template.get(),
+    language: config.language.get(),
     maxBytes: config.maxBytes.get(),
     retitleEvery: config.retitleEvery.get(),
     provider: config.provider.get(),
@@ -776,40 +783,9 @@ export function apply(ctx: Context, config: VolatileConfig): void {
     llm = llmCtx.llm;
   });
 
-  /**
-   * 用户的语言环境（设置里的语言）。
-   *
-   * host 侧**没有** locale 服务，但 locale 插件把偏好存进了设置文档的 `locale` 命名空间
-   * （字段 `preference`）。dsh 0.1.7 的 settings 服务只有 `describe()` 这一个读取面
-   * （`get` 已删除），它返回全部已登记命名空间的描述与当前值 —— 从里面找 `locale`。
-   * 同样走延迟注入，不能直接写 `ctx.settings`（受保护代理会抛）。
-   */
-  let settings: Context['settings'] | undefined;
-
-  /**
-   * 取用户选的语言环境；读不到返回 undefined。
-   *
-   * 读不到有两种情况：用户从没显式选过语言（那时真实语言由浏览器推导，host 看不到），
-   * 或这份组合里根本没注册 `locale` 命名空间。都由调用方退回「按对话语言判断」。
-   */
-  const getUiLocale = (): TypeLang | undefined => {
-    try {
-      const section = settings
-        ?.describe()
-        .find((descriptor) => descriptor.ns === 'locale')?.value as
-        | { preference?: unknown }
-        | undefined;
-      const preference = section?.preference;
-      return preference === 'zh' || preference === 'en' ? preference : undefined;
-    } catch {
-      // 读不到不该拖垮标题生成（命名空间没注册 / 文档形状意外），退回对话语言。
-      return undefined;
-    }
-  };
-
-  /** 类型标签该用哪种语言：语言环境优先，拿不到才看对话语言。 */
-  const resolveTypeLang = (messages: readonly SessionTitleUserMessage[]): TypeLang =>
-    getUiLocale() ?? detectMessageLang(messages);
+  /** 生成语言只由插件配置决定。 */
+  const resolveTypeLang = (_messages: readonly SessionTitleUserMessage[]): TypeLang =>
+    currentConfig().language;
 
   const provider = new SessionTitlePatternProvider(
     ctx,
@@ -836,15 +812,6 @@ export function apply(ctx: Context, config: VolatileConfig): void {
   }
 
   ctx.effect(() => dispose);
-
-  // 设置命名空间的登记在 dsh 0.1.7 里是**自动的**：settings 服务从活跃 entry 的
-  // `Config` 导出派生「Schema-derived plugin configuration forms」（旧 installSection
-  // 已删除），客户端在插件详情页按命名空间读写。这里只需拿到服务本体，给
-  // getUiLocale() 的 describe() 用 —— 同样不能直接写 `ctx.settings`（受保护代理），
-  // 走 ctx.inject 延迟等待。
-  ctx.inject(['settings'], (settingsCtx) => {
-    settings = settingsCtx.settings;
-  });
 
   // provider / model 成对校验已随 0.1.7 移除（settings 服务没有 validate 钩子）。
   // 只填其一时运行时整体忽略、跟随会话主模型，这里在启动时把这种配置打出来提醒。

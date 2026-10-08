@@ -59,8 +59,15 @@ export function MonacoPreview({ content, resourceAddress, wrap, scrollportRef, u
       scrollHeight: { configurable: true, get: () => instance.getScrollHeight() },
     })
     const scroll = instance.onDidScrollChange(() => port.dispatchEvent(new Event('scroll', { bubbles: true })))
+    const definitionClick = instance.onMouseUp(event => {
+      if (!event.event.metaKey || !event.event.leftButton || event.target.type !== monaco.editor.MouseTargetType.CONTENT_TEXT || !event.target.position) return
+      event.event.preventDefault()
+      event.event.stopPropagation()
+      instance.setPosition(event.target.position)
+      void instance.getAction('vscode-editor.goToDefinition')?.run()
+    })
     scrollportRef(port)
-    return () => { binding?.dispose(); lsp.current = null; scroll.dispose(); scrollportRef(null); editor.current = null; instance.dispose(); model.dispose(); Reflect.deleteProperty(port, 'scrollTop'); Reflect.deleteProperty(port, 'scrollHeight') }
+    return () => { binding?.dispose(); lsp.current = null; scroll.dispose(); definitionClick.dispose(); scrollportRef(null); editor.current = null; instance.dispose(); model.dispose(); Reflect.deleteProperty(port, 'scrollTop'); Reflect.deleteProperty(port, 'scrollHeight') }
   }, [resourceAddress, scrollportRef, queryLsp, tab.signal])
   useEffect(() => {
     if (content.kind !== 'text') return

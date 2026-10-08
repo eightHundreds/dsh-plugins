@@ -1,4 +1,4 @@
-# Session title (@dsk/session-title)
+# Session title (@dshx/session-title)
 
 English | [中文](README.zh.md)
 
@@ -26,7 +26,7 @@ MMDD ｜ type ｜ topic
 ```
 
 - **Date** — the day the session was **created**, four digits `MMDD` (your machine's **local** time zone, so no off-by-one day around midnight). It **does not drift when the title is recomputed**: keep chatting past midnight, or run `/retitle` later, and the prefix still shows the day this conversation started
-- **Type** — what the session is about, **following the interface language**: a Chinese UI gets two Chinese characters (排查 / 生成 / 配置…), an English UI gets a single word (Debug / Config / Docs) — an English conversation under a Chinese UI still gets a Chinese type
+- **Type** — what the session is about, **following the generation language setting**: `zh` gets two Chinese characters (排查 / 生成 / 配置…), `en` gets a single word (Debug / Config / Docs)
 - **Topic** — a summary of the **whole conversation**, not the first few characters of the first message
 
 The format is yours to change; the default template is `{MMDD}｜{type}｜{topic}`:
@@ -54,7 +54,7 @@ Failures behave differently depending on what already exists:
 - **A title already exists**: timeouts, errors, and a missing route all **keep the previous title** — a good title is never wiped out
 - **No title yet** (the very first attempt failed): instead of waiting for the model, the plugin builds a fallback title locally — the date as usual, **no type**, and the topic taken from the **leading words** of the first message (the same rule dsh uses for its own first-prompt naming: the first 8 whitespace-separated words, then a byte cap; Chinese has no spaces, so for Chinese this is effectively the whole message cut by bytes), e.g. `0915｜login failure reason`. The next recompute replaces it as soon as the model works
 
-**The type** uses the same language as the interface copy — both follow dsh's **interface language** (Settings → General → Language). **The topic follows the conversation's language.** So an English conversation with a Chinese UI reads exactly `0915｜排查｜Login 401`.
+**Type, topic and main line** all use the plugin's **generation language** (default `zh`), regardless of interface or conversation language. Selecting `en` generates English titles even for Chinese conversations. It applies to the next generation after saving; use `/retitle` to regenerate an existing title. Local fallback titles use the original message text without translation.
 
 ### Manual recompute and rename
 
@@ -86,6 +86,7 @@ Since dsh 0.1.7 the settings live on the plugin's own page: open the **Plugins**
 
 | Item | Meaning |
 | --- | --- |
+| **Generation language** | Dropdown: `zh` (Chinese, default) or `en` (English); controls type, topic and main line |
 | **Recompute every N messages** | Default `10`. `0` = compute once when the session is created |
 | **Model for title summaries** (provider / model) | Two dropdowns on one row: pick a provider on the left (first item "follow the chat model" = empty follows the session's main model), then a model on the right — selecting a provider auto-picks its first model. Options come from providers you have configured; falls back to two text fields when the directory is unavailable |
 | **Timeout** | Raise it when the model is slow (e.g. a free tier queueing) |
@@ -100,8 +101,9 @@ Edits are **staged** and written only when you press "Save"; each field marks wh
 For scripted or bulk deployments:
 
 ```yaml
-- id: session-title-pattern
+- id: dshx-session-title
   config:
+    language: zh
     retitleEvery: 10
     template: '{MMDD}｜{type}｜{topic}'
     maxBytes: 80
@@ -109,6 +111,7 @@ For scripted or bulk deployments:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
+| `language` | `zh` / `en` | `zh` | Fixed generation language for type, topic and main line |
 | `retitleEvery` | number | `10` | How many human messages between title recomputes; minimum `0`; `0` = compute once when the session is created |
 | `provider` | string | empty | Model provider; **must be paired with `model`**; empty follows the session's main model |
 | `model` | string | empty | Model id; **must be paired with `provider`** |
@@ -129,7 +132,7 @@ For scripted or bulk deployments:
 **dsh fails to start**: this plugin ships browser-side code, so a very old dsh may not be compatible. In the profile's `cordis.patch.yml`, **disable only this plugin** and dsh recovers; upgrade dsh and install again afterwards:
 
 ```yaml
-- id: session-title-pattern
+- id: dshx-session-title
   disabled: true
 ```
 

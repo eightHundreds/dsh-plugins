@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "TypeScript Language Pack",
+    "description": "TypeScript 7 native LSP integration over the official DSH stdio seam for TypeScript and JavaScript code intelligence."
+  }
+}

@@ -15,7 +15,7 @@ import type { Context } from '@deepseek-ai/cordis';
  */
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
-    '@dsk/session-title': { kind: '@dsk/session-title' };
+    '@dshx/session-title': { kind: '@dshx/session-title' };
   }
 }
 
@@ -57,10 +57,7 @@ const CJK_ALL = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/g;
 const LATIN_ALL = /[A-Za-z]/g;
 
 /**
- * 类型标签使用的语言。
- *
- * **由用户的语言环境决定，而不是对话语言**：中文环境下即便对话是英文，类型也用中文；
- * 反之亦然。只有拿不到语言环境时才退回「按对话语言判断」（见 `detectMessageLang`）。
+ * 插件配置指定的生成语言，统一用于类型、主题与主线。
  */
 export type TypeLang = 'zh' | 'en';
 
@@ -105,60 +102,27 @@ export function normalizeType(raw: string, lang: TypeLang): string {
   return [...word.replace(/[^\p{L}\p{N}+#.]/gu, '')].slice(0, MAX_TYPE_WORD_CHARS).join('');
 }
 
-/**
- * 系统提示词。
- *
- * 类型语言**每次现算**（用户随时可能在设置里换语言环境），所以提示词按目标语言生成：
- * **类型严格按指定语言**，主线与主题跟随消息本身的语言。
- *
- * 两段示例里**总有一条是「消息语言 ≠ 类型语言」**的情形 —— 只靠一句文字说明压不住，
- * 模型照抄示例比照抄说明可靠得多（v0.5.22 踩过这个坑）。
- */
-function systemPrompt(typeLang: TypeLang): string {
-  const typeRule =
-    typeLang === 'zh'
-      ? '  - 类型：**必须用中文**，两个汉字概括（例如「排查」「配置」「文档」），不要用英文单词。'
-      : '  - 类型：**must be one single English word**（例如 Debug / Config / Docs），首字母大写；' +
-        '不要用短语、句子或中文。';
-  const examples =
-    typeLang === 'zh'
-      ? [
-          '示例一（消息是中文）：主线「开发登录模块」、类型「排查」、主题「处理登录 401」，输出正好是这两行：',
-          '开发登录模块',
-          '排查|处理登录 401',
-          '示例二（消息是英文、但类型仍然要求中文）：主线 "Develop the login module"、类型「排查」、',
-          '主题 "login 401"，输出正好是这两行：',
-          'Develop the login module',
-          '排查|login 401',
-        ]
-      : [
-          '示例一（消息是英文）：主线 "Develop the login module"、类型 "Debug"、主题 "login 401"，输出正好是这两行：',
-          'Develop the login module',
-          'Debug|login 401',
-          '示例二（消息是中文、但类型仍然要求英文）：主线「开发登录模块」、类型 "Debug"、',
-          '主题「处理登录 401」，输出正好是这两行：',
-          '开发登录模块',
-          'Debug|处理登录 401',
-        ];
-
+/** 类型、主题与主线全部使用指定的生成语言。 */
+export function systemPrompt(language: TypeLang): string {
+  const languageRule = language === 'zh'
+    ? '所有生成内容（主线、类型、主题）必须用中文，即使消息或旧摘要是英文。技术名称、代码和专有名词可以保留原文。'
+    : 'All generated content (main line, type and topic) must be in English, even when messages or previous summaries are Chinese. Keep technical names, code and proper nouns as needed.';
   return [
     '你是一个会话标题生成器。根据给出的人类消息，为这段会话生成一个标题。',
-    '',
+    languageRule,
     '输出两行，除这两行外不要输出任何内容：',
-    '第一行：主线。一句话概括这段会话从头到尾**主要在干什么**，**用消息本身的语言**。',
-    '  如果输入里给了 mainLine：会话目标没有变化时**原样返回**，不要改写；',
-    '  mainLine 是这段会话**最初的最大目标** —— 解决主线过程中产生的报错、bug、调试，',
-    '  都是主线的**子任务**，不属于目标变化。不要因为最近一直在修 bug 就把主线改成「调试×××」；',
-    '  只有出现和原目标并列的全新目标时才更新主线。',
+    '第一行：主线。一句话概括这段会话从头到尾主要在干什么。',
+    '如果输入给了 mainLine，目标未变时保留其含义；语言与指定语言一致时原样返回，否则翻译成指定语言。',
+    'mainLine 是最初的最大目标，报错、bug、调试是其子任务，不属于目标变化；只有出现并列的全新目标才更新主线。',
     '第二行：类型|主题。',
-    typeRule,
-    '  - 主题：对整段会话的凝练总结，提炼关键词，不要照抄某一句话，**用消息本身的语言**。',
-    '  - **主线优先**：标题必须与第一行的主线一致。最近几轮可能只是在解决主线下面',
-    '    的某个具体问题，不要让它们把标题带偏。',
-    '',
-    ...examples,
-    '',
-    '要求：类型严格按上面指定的语言；主线与主题跟随消息本身的语言；行内不要引号、Markdown、编号或解释。',
+    language === 'zh'
+      ? '类型必须用中文，两个汉字概括（例如 排查 / 配置 / 文档），不要用英文单词。'
+      : 'Type must be one single English word, capitalized (e.g. Debug / Config / Docs); no Chinese or phrases.',
+    '主题：提炼整段会话的关键词，不要照抄某一句话；必须与主线一致，不要被最近的子任务带偏。',
+    language === 'zh'
+      ? '示例（消息为英文或中文，输出都用中文）：\n开发登录模块\n排查|处理登录 401'
+      : 'Example (Chinese or English messages, always English output):\nDevelop the login module\nDebug|Fix login 401',
+    '行内不要引号、Markdown、编号或解释。',
   ].join('\n');
 }
 
@@ -435,7 +399,7 @@ export async function callTitleModel(
       messages: [
         createUserMessage({
           content: [{ type: 'text', text: input }],
-          source: { kind: '@dsk/session-title' },
+          source: { kind: '@dshx/session-title' },
         }),
       ],
       system: systemPrompt(typeLang),

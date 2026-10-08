@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Bash RTK Sandbox Accelerator",
+    "description": "RTK-powered Bash command output compression and accelerator inside the official DSH sandbox, reducing context token overhead."
+  }
+}

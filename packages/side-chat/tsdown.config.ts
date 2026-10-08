@@ -28,7 +28,7 @@ export default defineConfig({
   plugins: [dshCssAssetBridge()],
   outputOptions: {
     entryFileNames: 'client.js',
-    banner: 'window.__ModuleLoader__.load({id:"@dsk/side-chat",factory:(require)=>{var module={exports:{}};var exports=module.exports;',
+    banner: 'window.__ModuleLoader__.load({id:"@dshx/side-chat",factory:(require)=>{var module={exports:{}};var exports=module.exports;',
     footer: 'const __DSH_CSS_MODULES__ = "__DSH_CSS_MODULES__";return module.exports;}});',
   },
 })

@@ -1,5 +1,5 @@
 {
-  "name": "@dsk/hello",
+  "name": "@dshx/hello",
   "version": "0.0.0",
   "description": "Minimal host plugin demonstrating Cordis lifecycle ownership.",
   "type": "module",

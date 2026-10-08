@@ -1,7 +1,8 @@
 {
-  "name": "@dsk/session-title",
+  "name": "@dshx/session-title",
   "version": "0.0.0",
   "description": "Configurable deterministic session titles for DeepSeek Harness.",
+  "icon": "./icon.png",
   "license": "UNLICENSED",
   "type": "module",
   "keywords": [
@@ -22,13 +23,15 @@
       "default": "./lib/client.js"
     },
     "./locale/*.json": "./locale/*.json",
+    "./icon.png": "./icon.png",
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml"
   },
   "files": [
     "lib",
     "locale",
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "icon.png"
   ],
   "scripts": {
     "build": "pnpm run build:host && pnpm run build:client",

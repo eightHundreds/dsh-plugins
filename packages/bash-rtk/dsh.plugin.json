@@ -1,6 +1,7 @@
 {
-  "id": "@dsk/bash-rtk",
+  "id": "@dshx/bash-rtk",
   "version": "0.2.0",
+  "icon": "./icon.png",
   "main": "./lib/index.js",
   "engines": {
     "dsh": "0.2.0-rc.2"

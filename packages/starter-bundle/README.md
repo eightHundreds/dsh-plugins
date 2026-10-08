@@ -1,4 +1,4 @@
-# @dsk/starter-bundle
+# @dshx/starter-bundle
 
 纯组合包，无 JavaScript 入口。dsh.bundle.patch 引用 Hello 插件；开发时 dependencies 使用 workspace:^。
 

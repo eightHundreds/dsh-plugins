@@ -4,6 +4,7 @@ import { readFile, readdir, realpath, lstat, stat } from 'node:fs/promises'
 import { resolve, dirname, join, isAbsolute } from 'node:path'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
 import { load, JSON_SCHEMA, Type } from 'js-yaml'
 
 const schema = JSON_SCHEMA.extend(new Type('tag:yaml.org,2002:js', {
@@ -32,12 +33,12 @@ export async function verifyDesktopInstall({ root = repository, profileDir = res
     const profile = await json(join(profileDir, 'package.json'))
     const overrides = await patches(join(profileDir, 'cordis.patch.yml'), true)
     const available = (await readdir(join(root, 'packages'), { withFileTypes: true })).filter(e => e.isDirectory()).map(e => e.name)
-    const slug = target?.replace(/^@dsk\//, '')
+    const slug = target?.replace(/^@dshx\//, '')
     const selected = slug ? [slug] : [...new Set([
       ...Object.keys(profile.dependencies ?? {}),
       ...(Array.isArray(profile.dsh?.profile?.bundles) ? profile.dsh.profile.bundles : []),
-    ])].filter(name => name.startsWith('@dsk/')).map(name => name.slice(5))
-    check(selected.length > 0, 'selection', selected.length ? `Checking ${selected.length} plugin(s)` : 'No @dsk plugins selected or declared')
+    ])].filter(name => name.startsWith('@dshx/')).map(name => name.slice(6))
+    check(selected.length > 0, 'selection', selected.length ? `Checking ${selected.length} plugin(s)` : 'No @dshx plugins selected or declared')
     for (const name of selected) {
       if (!available.includes(name)) {
         check(false, 'package', `Unknown repository plugin: ${name}`, name)
@@ -45,7 +46,7 @@ export async function verifyDesktopInstall({ root = repository, profileDir = res
       }
       const pkgDir = join(root, 'packages', name)
       const pkg = await json(join(pkgDir, 'package.json'))
-      const fullName = `@dsk/${name}`
+      const fullName = `@dshx/${name}`
       check(pkg.name === fullName, 'identity', `Package identity: ${fullName}`, name)
       const spec = profile.dependencies?.[fullName]
       check(typeof spec === 'string' && spec.startsWith('link:') && isAbsolute(spec.slice(5)) && resolve(spec.slice(5)) === resolve(pkgDir), 'dependency', `Dependency must be link:${pkgDir}`, name)
@@ -70,6 +71,17 @@ export async function verifyDesktopInstall({ root = repository, profileDir = res
         }
         check(exists, code, `${code}: ${file ?? 'no runtime export declared'} (build ${fullName} if missing)`, name)
       }
+      // Syntax check host output to prevent runtime syntax errors (e.g. untranspiled decorators)
+      const hostFile = targetFile(pkg.exports?.['.']) ?? pkg.main
+      if (typeof hostFile === 'string') {
+        const hostPath = resolve(pkgDir, hostFile)
+        try {
+          if ((await stat(hostPath)).isFile()) {
+            const result = spawnSync(process.execPath, ['--check', hostPath], { stdio: 'pipe' })
+            check(result.status === 0, 'host-syntax', result.status === 0 ? 'Host output syntax is valid' : `Host output syntax error: ${result.stderr?.toString().trim() || 'syntax check failed'}`, name)
+          }
+        } catch {}
+      }
       const declared = pkg.dsh?.bundle?.patch
       const files = typeof declared === 'string' ? [declared] : declared
       const valid = Array.isArray(files) && files.length > 0 && files.every(file => typeof file === 'string')
@@ -93,7 +105,7 @@ export async function verifyDesktopInstall({ root = repository, profileDir = res
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2)
   if (args.length > 1 || args[0]?.startsWith('-')) {
-    console.error('Usage: node scripts/check/verify-desktop-install.mjs [plugin-name | @dsk/plugin-name]')
+    console.error('Usage: node scripts/check/verify-desktop-install.mjs [plugin-name | @dshx/plugin-name]')
     process.exitCode = 1
   } else {
     const result = await verifyDesktopInstall({ target: args[0] })

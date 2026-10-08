@@ -30,7 +30,7 @@ const PLATFORM_MODULES = new Set([
   '@deepseek-ai/dsh-client-ui-dockkit',
 ])
 
-const PACKAGE_NAME = '@dsk/session-title'
+const PACKAGE_NAME = '@dshx/session-title'
 
 const isExternal = (specifier: string): boolean => PLATFORM_MODULES.has(specifier)
 

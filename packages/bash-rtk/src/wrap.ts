@@ -10,7 +10,7 @@
  * preserving non-rewriteable commands (shell builtins, echo, etc.) by returning
  * non-zero exit code.
  *
- * @module @dsk/bash-rtk/wrap
+ * @module @dshx/bash-rtk/wrap
  */
 
 import { spawnSync } from 'node:child_process'

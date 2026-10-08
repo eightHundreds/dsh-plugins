@@ -38,7 +38,13 @@ async function setup() {
 
 // macOS exercises the actual built-in Seatbelt backend. Other platforms still
 // run portable fake-backend lifecycle tests; this suite makes no claim for them.
-describe.skipIf(process.platform !== 'darwin')('published SDK real macOS sandbox', () => {
+const isSandboxUsable = () => {
+  if (process.platform !== 'darwin') return false
+  const res = spawnSync('sandbox-exec', ['-p', '(version 1) (allow default)', 'true'], { stdio: 'ignore' })
+  return res.status === 0
+}
+
+describe.skipIf(!isSandboxUsable())('published SDK real macOS sandbox', () => {
   it('denies a real write without creating the target', async () => {
     const { ctx, workspace } = await setup()
     const target = join(workspace, 'must-not-exist.txt')

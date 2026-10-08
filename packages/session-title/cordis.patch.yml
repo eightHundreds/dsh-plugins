@@ -3,5 +3,5 @@
   disabled: true
 
 - insert:
-    - id: dsk-session-title
-      name: '@dsk/session-title'
+    - id: dshx-session-title
+      name: '@dshx/session-title'

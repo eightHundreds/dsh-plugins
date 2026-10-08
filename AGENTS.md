@@ -2,7 +2,7 @@
 
 ## Overview
 DSH 插件 Monorepo (pnpm workspace + TypeScript)。
-所有包统一使用 `@dsk/<插件名>` scope。包独立发布，通过 GitHub Release 附件交付，不发布 npm。
+所有包统一使用 `@dshx/<插件名>` scope。包独立发布，通过 GitHub Release 附件交付，不发布 npm。
 
 ## Rules & Constraints
 - **运行环境**: 用户主要使用 Desktop 版本（非 Web 版）。Node 24 (通过 fnm)，pnpm 11+。

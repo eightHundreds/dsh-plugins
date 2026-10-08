@@ -1,4 +1,4 @@
-# @dsk/bash-rtk
+# @dshx/bash-rtk
 
 RTK-aware sandbox bash provider for **unmodified official DSH**, using its public SDK. No DSH core patch, Desktop rebuild or custom runtime is required. See [中文说明](<./README.zh.md>) and [provenance](<./UPSTREAM.md>).
 
@@ -25,7 +25,7 @@ Install this repository's Release tarball; RTK must already be on the host PATH.
   disabled: true
 - insert:
     - id: bash-rtk
-      name: '@dsk/bash-rtk'
+      name: '@dshx/bash-rtk'
       disabled: false
       config:
         probeTimeoutMs: 2000
@@ -50,7 +50,7 @@ All checks use published SDK packages, including executor/sandbox tests. No sibl
 
 ```sh
 pnpm install
-pnpm --filter @dsk/bash-rtk check
+pnpm --filter @dshx/bash-rtk check
 pnpm pack:all
 ```
 

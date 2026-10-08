@@ -2,11 +2,37 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
+import ts from 'typescript'
 import { dshCssAssetBridge } from '../../scripts/build/dsh-css-asset-bridge.mjs'
 
 const require = createRequire(import.meta.url)
 const monacoVs = resolve(dirname(require.resolve('monaco-editor/editor/editor.api.js')), '..')
 const externals = ['react', 'react/jsx-runtime', 'react-dom']
+
+const DECORATOR_SYNTAX = /^\s*@[A-Za-z_$][\w$]*/m
+
+/** Lower standard/TypeScript decorators for Node.js runtime compatibility. */
+function decoratorLowering() {
+  return {
+    name: 'dsh-decorator-lowering',
+    transform(code, id) {
+      const file = id.split('?', 1)[0] ?? id
+      if (!/\.[cm]?tsx?$/.test(file) || !DECORATOR_SYNTAX.test(code)) return
+      const result = ts.transpileModule(code, {
+        fileName: file,
+        compilerOptions: {
+          target: ts.ScriptTarget.ES2024,
+          module: ts.ModuleKind.ESNext,
+          sourceMap: true,
+        },
+      })
+      return {
+        code: result.outputText.replace(/\n?\/\/# sourceMappingURL=.*$/u, '\n'),
+        map: result.sourceMapText,
+      }
+    },
+  }
+}
 
 /** Collect Monaco styles into the existing plugin-owned lifecycle effect. */
 function clientEnvelope() {
@@ -47,6 +73,7 @@ export const host = {
   entry: { index: 'src/index.ts', assets: 'src/assets.ts', 'lsp-query': 'src/lsp-query.ts', 'lsp-remote': 'src/lsp-remote.ts', 'lsp-host': 'src/lsp-host.ts' }, outDir: 'lib',
   format: 'esm', platform: 'node', target: 'es2024', fixedExtension: false,
   clean: false, dts: true, deps: { neverBundle: [/^@deepseek-ai\//] },
+  plugins: [decoratorLowering()],
 }
 export const worker = {
   entry: { 'editor.worker': require.resolve('monaco-editor/editor/editor.worker.js') },

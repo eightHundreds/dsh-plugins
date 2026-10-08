@@ -4,9 +4,9 @@ DeepSeek Harness (DSH) 社区插件 Monorepo。采用 pnpm workspace + TypeScrip
 
 ## 📦 包含插件
 
-- **[`@dsk/bash-rtk`](packages/bash-rtk)**：基于 [RTK (Rust Token Killer)](https://github.com/rtk-org/rtk) 的终端命令改写执行器。无缝拦截并在命令前接入 RTK 压缩输出，节约大模型 60%–90% 输出 Token，并在执行轨迹中展示 `[rtk: <cmd>]`。
-- **[`@dsk/hello`](packages/hello)**：DSH 插件生命周期与基础实现示例。
-- **`@dsk/starter-bundle`**：常用插件预打包组合。
+- **[`@dshx/bash-rtk`](packages/bash-rtk)**：基于 [RTK (Rust Token Killer)](https://github.com/rtk-org/rtk) 的终端命令改写执行器。无缝拦截并在命令前接入 RTK 压缩输出，节约大模型 60%–90% 输出 Token，并在执行轨迹中展示 `[rtk: <cmd>]`。
+- **[`@dshx/hello`](packages/hello)**：DSH 插件生命周期与基础实现示例。
+- **`@dshx/starter-bundle`**：常用插件预打包组合。
 
 ## 🛠️ 快速开发
 
@@ -27,7 +27,7 @@ pnpm check
 参考 [Desktop 本地调试与安装规范](docs/agents/desktop-debug-install.md)：
 
 1. `~/.dsh/profiles/desktop/package.json` 中使用 `link:` 引入本地插件目录。
-2. `~/.dsh/profiles/desktop/cordis.patch.yml` 中配置 `hmr.root` 指向插件 `lib/` 绝对路径，并声明 `name: '@dsk/<插件名>'` 享受免重启 HMR 热更。
+2. `~/.dsh/profiles/desktop/cordis.patch.yml` 中配置 `hmr.root` 指向插件 `lib/` 绝对路径，并声明 `name: '@dshx/<插件名>'` 享受免重启 HMR 热更。
 
 ## 🚢 发布
 

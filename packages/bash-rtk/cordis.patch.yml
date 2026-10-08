@@ -9,7 +9,7 @@
 # 2. Insert and enable bash-rtk
 - insert:
     - id: bash-rtk
-      name: '@dsk/bash-rtk'
+      name: '@dshx/bash-rtk'
       disabled: false
       config:
         probeTimeoutMs: 2000

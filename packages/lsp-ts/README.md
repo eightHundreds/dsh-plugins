@@ -1,4 +1,4 @@
-# @dsk/lsp-ts
+# @dshx/lsp-ts
 
 TypeScript / JavaScript language pack，复用官方 `ctx.lsp` 和 `@deepseek-ai/dsh-lsp-stdio`。不实现 JSON-RPC、不创建自己的进程池、不提供额外模型工具。
 
@@ -6,23 +6,25 @@ TypeScript / JavaScript language pack，复用官方 `ctx.lsp` 和 `@deepseek-ai
 
 要求 Host 使用官方 0.2.0-rc.2 SDK。必须在同一执行环境组合一次官方 Lsp service、dsh-tool-lsp，以及匹配的 fs/subprocess provider；本包只消费这些服务，不自动创建第二份基础设施。
 
-安装语言服务器：
+使用 TypeScript 7 原生 LSP；本次验证的最新正式版本为 7.0.2。语言服务器由部署安装，本包不自动下载：
 
 ```sh
-pnpm add -g typescript typescript-language-server
+pnpm add -g typescript@latest
 ```
 
-通过仓库 GitHub Release 的 tarball 安装本包。安装补丁只添加 @dsk/lsp-ts 行；若部署没有 ctx.lsp 或官方 tool-lsp，需在部署中配置官方基础设施。其它插件调用同一 ctx.lsp，即共享官方运行时。
+通过仓库 GitHub Release 的 tarball 安装本包。安装补丁只添加 @dshx/lsp-ts 行；若部署没有 ctx.lsp 或官方 tool-lsp，需在部署中配置官方基础设施。其它插件调用同一 ctx.lsp，即共享官方运行时。
 
-默认 command 为 typescript-language-server，args 为 [--stdio]；映射 .ts/typescript、.tsx/typescriptreact、.js/javascript、.jsx/javascriptreact。
+默认 command 为 tsc，args 为 [--lsp, --stdio]；映射 .ts/typescript、.tsx/typescriptreact、.js/javascript、.jsx/javascriptreact。
+
+TypeScript 6 及更早版本的 tsc 不支持此 LSP 启动方式。建议 command 使用 TypeScript 7 的绝对路径，避免误选项目旧版 tsc。插件开发用 typescript-native alias 锁定 7.0.2 做真实服务器测试，构建类型检查仍用仓库的 TypeScript 5.9.3。
 
 Desktop 的 PATH 可能与终端不同；可设置绝对 command 路径或 env.PATH。command 必须是绝对路径或 PATH 名称，不能是相对路径。示例配置：
 
 ```yaml
-- name: '@dsk/lsp-ts'
+- name: '@dshx/lsp-ts'
   config:
-    command: /absolute/path/to/typescript-language-server
-    args: [--stdio]
+    command: /absolute/path/to/typescript/bin/tsc
+    args: [--lsp, --stdio]
     env:
       PATH: /absolute/path/to/node/bin:/usr/bin:/bin
     extensionToLanguage:
@@ -44,7 +46,7 @@ command/args 替换默认值；env 交由官方 subprocess 合并；extensionToL
 
 ## 验证
 
-pnpm --filter @dsk/lsp-ts typecheck / build / test。测试使用真实官方 Cordis + fs-local + subprocess-local + lsp-stdio 和 typescript-language-server，验证四操作、并发/符号链接规范化共享、两个 workspace、lazy spawn 和卸载 waitForExit，以及缺少命令、自定义路由、取消、冲突和配置错误。
+pnpm --filter @dshx/lsp-ts typecheck / build / test。测试使用真实官方 Cordis + fs-local + subprocess-local + lsp-stdio 和原生 TypeScript 7.0.2 的 tsc --lsp --stdio，验证四操作、并发/符号链接规范化共享、两个 workspace、lazy spawn 和卸载 waitForExit，以及缺少命令、自定义路由、取消、冲突和配置错误。
 
 这是官方栈集成测试，不是 Desktop 安装验收。实际 Desktop profile 激活和模型工具可用性仍须在安装后验证。
 

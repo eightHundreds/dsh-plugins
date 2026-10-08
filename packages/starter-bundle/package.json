@@ -1,5 +1,5 @@
 {
-  "name": "@dsk/starter-bundle",
+  "name": "@dshx/starter-bundle",
   "version": "0.0.0",
   "description": "Example DSH composition bundle over workspace plugins.",
   "type": "module",
@@ -19,7 +19,7 @@
     "cordis"
   ],
   "dependencies": {
-    "@dsk/hello": "workspace:^"
+    "@dshx/hello": "workspace:^"
   },
   "dsh": {
     "bundle": {

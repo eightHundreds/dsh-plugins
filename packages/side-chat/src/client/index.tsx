@@ -20,7 +20,7 @@ declare const __DSH_CSS_MODULES__: string
 
 export const name = 'side-chat'
 export const inject = ['slots', 'locale', 'sessions', 'uiSession', 'uiConversation', 'uiWorkspace', 'sidebarRight', 'sidebarRightTabs']
-const ID = '@dsk/side-chat'
+const ID = '@dshx/side-chat'
 const SIDECHAT_TAB_KIND = 'sidechat'
 
 export function apply(ctx: Context): void {

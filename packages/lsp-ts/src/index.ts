@@ -16,7 +16,7 @@
  * session keeps working.
  *
  * Namespace plugin (named exports, no default export).
- * @module @dsk/lsp-ts
+ * @module @dshx/lsp-ts
  */
 
 import type { Context } from '@deepseek-ai/cordis'
@@ -37,10 +37,10 @@ export const inject = ['fs', 'lsp', 'subprocess']
 export const PROVIDER_ID = 'ts'
 
 /** Default server command (absolute path or PATH-resolved executable, no shell). */
-export const DEFAULT_COMMAND = 'typescript-language-server'
+export const DEFAULT_COMMAND = 'tsc'
 
 /** Default launch arguments. */
-export const DEFAULT_ARGS: readonly string[] = ["--stdio"]
+export const DEFAULT_ARGS: readonly string[] = ['--lsp', '--stdio']
 
 /** Default lowercase leading-dot extension → LSP language id table. */
 export const DEFAULT_EXTENSION_TO_LANGUAGE: Readonly<Record<string, string>> = {
@@ -155,18 +155,16 @@ function failureMessage(error: unknown): string {
  * @param ctx - the plugin context (must inject `fs`, `lsp`, `subprocess`).
  * @param config - the resolved pack configuration.
  */
+import { registerLanguageServer } from '@dshx/lsp'
+
 export async function apply(ctx: Context, config: Config): Promise<void> {
   const server = resolveServerConfig(config)
   try {
-    // Resolve through lsp-stdio’s own Config schema so every documented default
-    // (timer budgets, byte caps, env, ...) is filled before apply() — calling the
-    // stdio apply directly bypasses the Cordis loader’s schema pass.
-    const stdioConfig = LspStdio.Config({ servers: { [PROVIDER_ID]: server } })
-    await LspStdio.apply(ctx, stdioConfig)
+    ctx.effect(() => {
+      return registerLanguageServer(ctx, PROVIDER_ID, server)
+    }, name + '.server')
     return
   } catch (error) {
-    // Only a completed executable lookup miss is recoverable. Preserve official
-    // conflict, invalid-config, transport and disposal failures.
     if (!(error instanceof SubprocessExecutableNotFoundError)) throw error
     const reason = failureMessage(error)
     console.warn('[' + name + '] ' + server.command + ' unavailable at load: ' + reason)

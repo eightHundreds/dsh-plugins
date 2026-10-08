@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  systemPrompt,
   detectMessageLang,
   normalizeType,
   parseTitleLine,
@@ -76,4 +77,19 @@ test('buildPromptInput constructs incremental rolling state payload', () => {
   assert.ok(prompt.includes('开发用户中心'));
   assert.ok(prompt.includes('排查|处理 401'));
   assert.ok(prompt.includes('检查 JWT Token 解析'));
+});
+
+
+test('generation language controls main line, type and topic regardless of message language', () => {
+  const zh = systemPrompt('zh');
+  assert.ok(zh.includes('所有生成内容（主线、类型、主题）必须用中文'));
+  assert.ok(zh.includes('即使消息或旧摘要是英文'));
+  assert.ok(zh.includes('排查|处理登录 401'));
+  const en = systemPrompt('en');
+  assert.ok(en.includes('All generated content (main line, type and topic) must be in English'));
+  assert.ok(en.includes('even when messages or previous summaries are Chinese'));
+  assert.ok(en.includes('Debug|Fix login 401'));
+  for (const prompt of [zh, en]) {
+    assert.ok(prompt.includes('否则翻译成指定语言'));
+  }
 });

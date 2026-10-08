@@ -1,1 +1,1 @@
-{"meta":{"title":"Example Hello","description":"Minimal host plugin with lifecycle cleanup."}}
+{"meta":{"title":"Plugin Lifecycle Example","description":"Demonstrates loading, resource registration, and cleanup for a DSH Host plugin."}}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Bash RTK 沙箱加速",
+    "description": "基于 RTK（Rust Token Killer）的 Bash 命令输出压缩与加速执行器，在保证沙箱安全的前提下减少模型上下文 Token 消耗。"
+  }
+}

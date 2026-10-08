@@ -25,7 +25,7 @@ try {
 }
 if (officialIds.has(slug)) {
   console.error(
-    `Refusing @dsk/${slug}: "${slug}" is an official DSH entry id. Insert a distinct id and disable the official row separately.`,
+    `Refusing @dshx/${slug}: "${slug}" is an official DSH entry id. Insert a distinct id and disable the official row separately.`,
   )
   process.exit(1)
 }
@@ -45,7 +45,7 @@ if (!isUi) {
   const files = ['package.json', 'tsconfig.json', 'tsdown.config.ts', 'cordis.patch.yml', 'src/index.ts', 'locale/en.json', 'locale/zh.json', 'README.md']
   for (const file of files) {
     const source = await readFile(resolve(root, 'packages/hello', file), 'utf8')
-    let content = source.replaceAll('@dsk/hello', '@dsk/' + slug)
+    let content = source.replaceAll('@dshx/hello', '@dshx/' + slug)
       .replaceAll('example-hello', slug).replaceAll('Example Hello', slug)
       .replaceAll('Hello 示例', slug)
     if (file === 'package.json') {
@@ -77,7 +77,7 @@ test('${slug} plugin lifecycle', async () => {
 } else {
   // UI plugin with host entry + web client UI bundle
   const manifest = {
-    name: `@dsk/${slug}`,
+    name: `@dshx/${slug}`,
     version: '0.0.0',
     description: `${slug} plugin with web client UI`,
     type: 'module',
@@ -192,14 +192,14 @@ export default defineConfig([
     css: {
       inject: false,
       modules: {
-        generateScopedName: 'dsk_${slug.replaceAll('-', '_')}_[local]_[hash]',
+        generateScopedName: 'dshx_${slug.replaceAll('-', '_')}_[local]_[hash]',
         localsConvention: 'camelCaseOnly',
       },
     },
     plugins: [dshCssAssetBridge()],
     outputOptions: {
       entryFileNames: 'client.js',
-      banner: 'window.__ModuleLoader__.load({id:"@dsk/${slug}",factory:(require)=>{var module={exports:{}};var exports=module.exports;',
+      banner: 'window.__ModuleLoader__.load({id:"@dshx/${slug}",factory:(require)=>{var module={exports:{}};var exports=module.exports;',
       footer: 'const __DSH_CSS_MODULES__ = "__DSH_CSS_MODULES__";return module.exports;}});',
     },
   },
@@ -208,7 +208,7 @@ export default defineConfig([
 
   const patchYaml = `- insert:
     - id: ${slug}
-      name: '@dsk/${slug}'
+      name: '@dshx/${slug}'
 `
 
   const hostIndex = `import type { Context } from '@deepseek-ai/cordis'
@@ -217,9 +217,9 @@ export const name = '${slug}'
 
 export function apply(ctx: Context): void {
   ctx.effect(() => {
-    console.info('[@dsk/${slug}] host loaded')
+    console.info('[@dshx/${slug}] host loaded')
     return () => {
-      console.info('[@dsk/${slug}] host disposed')
+      console.info('[@dshx/${slug}] host disposed')
     }
   })
 }
@@ -235,9 +235,9 @@ export const inject = ['slots']
 
 export function apply(ctx: Context): void {
   ctx.effect(() => {
-    console.info('[@dsk/${slug}] client loaded', styles.container)
+    console.info('[@dshx/${slug}] client loaded', styles.container)
     return () => {
-      console.info('[@dsk/${slug}] client disposed')
+      console.info('[@dshx/${slug}] client disposed')
     }
   })
 }
@@ -264,7 +264,7 @@ export function apply(ctx: Context): void {
     title: slug,
   }
 
-  const readme = `# @dsk/${slug}
+  const readme = `# @dshx/${slug}
 
 UI plugin for DeepSeek Harness (DSH).
 `

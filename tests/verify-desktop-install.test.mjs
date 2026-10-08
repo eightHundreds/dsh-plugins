@@ -6,21 +6,21 @@ import { join } from 'node:path'
 import { verifyDesktopInstall } from '../scripts/check/verify-desktop-install.mjs'
 
 async function fixture(options = {}) {
-  const root = await mkdtemp(join(tmpdir(), 'dsk-desktop-check-'))
+  const root = await mkdtemp(join(tmpdir(), 'dshx-desktop-check-'))
   const profileDir = join(root, 'profile')
   const pkgDir = join(root, 'packages/demo')
   await mkdir(join(pkgDir, 'lib'), { recursive: true })
-  await mkdir(join(profileDir, 'node_modules/@dsk'), { recursive: true })
+  await mkdir(join(profileDir, 'node_modules/@dshx'), { recursive: true })
   await writeFile(join(pkgDir, 'package.json'), JSON.stringify({
-    name: '@dsk/demo', exports: { '.': { import: './lib/index.js' }, './client': { default: './lib/client.js' } },
+    name: '@dshx/demo', exports: { '.': { import: './lib/index.js' }, './client': { default: './lib/client.js' } },
     dsh: { client: { platform: 'web' }, bundle: { patch: options.patchFiles ?? './cordis.patch.yml' } },
   }))
-  await writeFile(join(pkgDir, 'cordis.patch.yml'), '- id: builtin\n  disabled: true\n- insert:\n    - id: demo\n      name: "@dsk/demo"\n      config: !!js process.env.SECRET\n')
+  await writeFile(join(pkgDir, 'cordis.patch.yml'), '- id: builtin\n  disabled: true\n- insert:\n    - id: demo\n      name: "@dshx/demo"\n      config: !!js process.env.SECRET\n')
   if (!options.missingHost) await writeFile(join(pkgDir, 'lib/index.js'), '')
   if (!options.missingClient) await writeFile(join(pkgDir, 'lib/client.js'), '')
-  const dependencies = options.missingDependency ? {} : { '@dsk/demo': options.spec ?? `link:${pkgDir}` }
-  await writeFile(join(profileDir, 'package.json'), JSON.stringify({ dependencies, dsh: { profile: { bundles: options.missingBundle ? [] : ['@dsk/demo'] } } }))
-  if (!options.missingLink) await symlink(options.wrongLink ? profileDir : pkgDir, join(profileDir, 'node_modules/@dsk/demo'))
+  const dependencies = options.missingDependency ? {} : { '@dshx/demo': options.spec ?? `link:${pkgDir}` }
+  await writeFile(join(profileDir, 'package.json'), JSON.stringify({ dependencies, dsh: { profile: { bundles: options.missingBundle ? [] : ['@dshx/demo'] } } }))
+  if (!options.missingLink) await symlink(options.wrongLink ? profileDir : pkgDir, join(profileDir, 'node_modules/@dshx/demo'))
   await writeFile(join(profileDir, 'cordis.patch.yml'), options.patch ?? `- id: hmr\n  config:\n    root:\n      - ${join(pkgDir, 'lib')}\n`)
   return { root, profileDir, target: 'demo' }
 }

@@ -1,5 +1,5 @@
 {
-  "name": "@dsk/side-chat",
+  "name": "@dshx/side-chat",
   "version": "0.0.0",
   "description": "DSH right sidebar conversations forked from a completed turn.",
   "type": "module",
@@ -15,11 +15,13 @@
       "types": "./lib/client/index.d.ts",
       "default": "./lib/client.js"
     },
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml"
   },
   "files": [
     "lib",
+    "locale",
     "cordis.patch.yml"
   ],
   "scripts": {
