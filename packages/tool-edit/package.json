@@ -31,7 +31,7 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "pnpm --filter @dshx/lsp run build && tsc --noEmit",
     "test": "vitest run",
     "prepack": "pnpm run build"
   },
